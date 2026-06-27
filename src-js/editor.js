@@ -270,7 +270,7 @@
       repeatInput.min = '1';
       repeatInput.max = '99';
       repeatInput.value = section.repeat || '';
-      repeatInput.placeholder = '—';
+      repeatInput.placeholder = '-';
       repeatInput.setAttribute('aria-label', 'Repeat count');
       repeatInput.addEventListener('change', () => {
         app.pushUndo();
@@ -305,6 +305,12 @@
       }, 100);
     });
 
+    const collectBtn = createActionBtn('☆', 'Save section to collected', () => {
+      if (app.openCollectSectionModal) {
+        app.openCollectSectionModal(section.id);
+      }
+    });
+
     const deleteBtn = createActionBtn('🗑', 'Delete section', () => {
       app.pushUndo();
       app.state.sections.splice(sIdx, 1);
@@ -313,6 +319,7 @@
     });
     deleteBtn.classList.add('delete');
 
+    actions.appendChild(collectBtn);
     actions.appendChild(dupeBtn);
     actions.appendChild(deleteBtn);
 

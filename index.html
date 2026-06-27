@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Create professional music charts with color-coded chords, lyrics, and sections. Export to PDF matching your band's chart format.">
-  <title>Chart Creator — Music Charts</title>
+  <title>Chart Creator - Music Charts</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,6 +18,13 @@
       <span class="toolbar-brand-text">Chart Creator</span>
     </div>
     <div class="toolbar-actions">
+      <button class="btn btn-sm workspace-switch active" id="btn-editor-view" title="Show editor">
+        Editor
+      </button>
+      <button class="btn btn-sm workspace-switch" id="btn-library-view" title="Show library">
+        Library
+      </button>
+      <div class="toolbar-divider"></div>
       <button class="btn btn-sm" id="btn-new" title="New Chart">
         <span>📄</span> New
       </button>
@@ -48,7 +55,7 @@
   </header>
 
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-content">
+  <main class="main-content workspace-view active" id="editor-view">
 
     <!-- ===== SIDEBAR (Metadata) ===== -->
     <aside class="sidebar" id="sidebar">
@@ -70,7 +77,7 @@
           <div class="form-group">
             <label class="form-label" for="input-key">Key</label>
             <select class="form-select" id="input-key">
-              <option value="">—</option>
+              <option value="">-</option>
               <option value="C">C</option>
               <option value="C#">C# / Db</option>
               <option value="D">D</option>
@@ -99,12 +106,12 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="input-bpm">BPM</label>
-            <input class="form-input" type="number" id="input-bpm" placeholder="—" min="20" max="300">
+            <input class="form-input" type="number" id="input-bpm" placeholder="-" min="20" max="300">
           </div>
           <div class="form-group">
             <label class="form-label" for="input-timesig">Time Sig</label>
             <select class="form-select" id="input-timesig">
-              <option value="">—</option>
+              <option value="">-</option>
               <option value="4/4">4/4</option>
               <option value="3/4">3/4</option>
               <option value="6/8">6/8</option>
@@ -133,7 +140,7 @@
           <div class="form-group">
             <label class="form-label" for="input-original-key">Original Key</label>
             <select class="form-select" id="input-original-key">
-              <option value="">—</option>
+              <option value="">-</option>
               <option value="C">C</option>
               <option value="C#">C# / Db</option>
               <option value="D">D</option>
@@ -156,7 +163,7 @@
         <div class="sidebar-header sidebar-header-compact">Transpose</div>
         <div class="transpose-bar">
           <button class="transpose-btn" id="btn-transpose-down" title="Transpose down one semitone">−</button>
-          <span class="transpose-key" id="transpose-display">—</span>
+          <span class="transpose-key" id="transpose-display">-</span>
           <button class="transpose-btn" id="btn-transpose-up" title="Transpose up one semitone">+</button>
         </div>
       </div>
@@ -188,9 +195,14 @@
     <section class="editor-panel" id="editor-panel">
       <div class="editor-toolbar">
         <div class="editor-toolbar-left">
-          <span class="editor-toolbar-title">Sections</span>
+          <div class="editor-tabs" role="tablist" aria-label="Editor tools">
+            <button class="editor-tab active" data-editor-tab="sections" type="button">Sections</button>
+            <button class="editor-tab" data-editor-tab="versions" type="button">Versions</button>
+            <button class="editor-tab" data-editor-tab="info" type="button">Info</button>
+            <button class="editor-tab" data-editor-tab="collected" type="button">Collected</button>
+          </div>
         </div>
-        <div class="editor-toolbar-left">
+        <div class="editor-toolbar-left editor-tab-actions" data-editor-tab-actions="sections">
           <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
             <span>+</span> Add Section (Top)
           </button>
@@ -199,35 +211,88 @@
             <span>📋</span> Import Text
           </button>
         </div>
+        <div class="editor-toolbar-left editor-tab-actions hidden" data-editor-tab-actions="versions">
+          <button class="btn btn-sm btn-primary" id="btn-save-version" title="Save a manual version snapshot">
+            <span>＋</span> Save Version
+          </button>
+        </div>
       </div>
 
-      <!-- Search & Replace bar (inline, VS Code style) -->
-      <div class="search-replace-bar" id="search-replace-bar" style="display:none;">
-        <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…">
-        <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…">
-        <label class="search-option" title="Case sensitive"><input type="checkbox" id="search-case-sensitive"> Aa</label>
-        <label class="search-option" title="Use regex"><input type="checkbox" id="search-regex"> .*</label>
-        <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace All</button>
-        <button class="btn btn-sm btn-ghost" id="search-close-btn">✕</button>
+      <div class="editor-tab-panel active" id="sections-tab-panel" data-editor-tab-panel="sections">
+        <!-- Search & Replace bar (inline, VS Code style) -->
+        <div class="search-replace-bar" id="search-replace-bar" style="display:none;">
+          <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…">
+          <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…">
+          <label class="search-option" title="Case sensitive"><input type="checkbox" id="search-case-sensitive"> Aa</label>
+          <label class="search-option" title="Use regex"><input type="checkbox" id="search-regex"> .*</label>
+          <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace All</button>
+          <button class="btn btn-sm btn-ghost" id="search-close-btn">✕</button>
+        </div>
+
+        <div class="editor-sections" id="editor-sections">
+          <!-- Section cards rendered here by JS -->
+          <div class="empty-state" id="empty-state">
+            <div class="empty-state-icon">🎶</div>
+            <div class="empty-state-title">No sections yet</div>
+            <div class="empty-state-desc">
+              Click "Add Section" to start building your chart, or import text from an existing chart.
+            </div>
+          </div>
+        </div>
+
+        <div class="add-section-area" id="add-section-area" style="display: none;">
+          <button class="add-section-btn" id="btn-add-section-bottom">
+            <span>+</span> Add Section (Bottom)
+          </button>
+        </div>
       </div>
 
-      <div class="editor-sections" id="editor-sections">
-        <!-- Section cards rendered here by JS -->
-        <div class="empty-state" id="empty-state">
-          <div class="empty-state-icon">🎶</div>
-          <div class="empty-state-title">No sections yet</div>
-          <div class="empty-state-desc">
-            Click "Add Section" to start building your chart, or import text from an existing chart.
+      <div class="editor-tab-panel" id="versions-tab-panel" data-editor-tab-panel="versions" hidden>
+        <div class="tool-panel-header">
+          <div>
+            <div class="tool-panel-title">Versions</div>
+            <div class="tool-panel-subtitle">Manual snapshots for trying arrangement changes without losing earlier charts.</div>
+          </div>
+        </div>
+        <div class="versions-list" id="versions-list"></div>
+      </div>
+
+      <div class="editor-tab-panel" id="info-tab-panel" data-editor-tab-panel="info" hidden>
+        <div class="tool-panel-header">
+          <div>
+            <div class="tool-panel-title">Chart info</div>
+            <div class="tool-panel-subtitle">Private workflow details. These fields do not print or export to PDF.</div>
+          </div>
+        </div>
+        <div class="info-panel-grid">
+          <div class="form-group">
+            <label class="form-label" for="input-group">Group</label>
+            <select class="form-select" id="input-group"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="input-status">Status</label>
+            <input class="form-input" type="text" id="input-status" placeholder="Draft, rehearsal, final...">
+          </div>
+          <div class="form-group info-panel-span">
+            <label class="form-label" for="input-source">Source</label>
+            <input class="form-input" type="text" id="input-source" placeholder="Reference chart, session, recording, or link...">
+          </div>
+          <div class="form-group info-panel-span">
+            <label class="form-label" for="input-info-notes">Info notes</label>
+            <textarea id="input-info-notes" class="form-input input-notes" placeholder="Private revision notes, source details, or handoff context..." rows="6"></textarea>
           </div>
         </div>
       </div>
 
-      <div class="add-section-area" id="add-section-area" style="display: none;">
-        <button class="add-section-btn" id="btn-add-section-bottom">
-          <span>+</span> Add Section (Bottom)
-        </button>
+      <div class="editor-tab-panel" id="collected-tab-panel" data-editor-tab-panel="collected" hidden>
+        <div class="tool-panel-header">
+          <div>
+            <div class="tool-panel-title">Collected sections</div>
+            <div class="tool-panel-subtitle">Save reusable intros, endings, turnarounds, and section patterns from any chart.</div>
+          </div>
+        </div>
+        <div class="collected-list" id="collected-list"></div>
       </div>
-
     </section>
 
     <!-- ===== PREVIEW PANEL ===== -->
@@ -252,6 +317,35 @@
 
   </main>
 
+  <!-- ===== LIBRARY VIEW ===== -->
+  <main class="library-view workspace-view" id="library-view" hidden>
+    <aside class="library-groups-panel">
+      <div class="library-groups-header">
+        <span>Groups</span>
+        <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group">+</button>
+      </div>
+      <div class="library-group-list" id="library-group-list"></div>
+    </aside>
+    <section class="library-main-panel">
+      <div class="library-main-header">
+        <div>
+          <h1 class="library-title">Library</h1>
+          <p class="library-subtitle">Browse saved charts by setlist or folder.</p>
+        </div>
+        <div class="library-controls">
+          <input type="text" id="full-library-search" class="form-input library-full-search" placeholder="Search charts...">
+          <select id="full-library-sort" class="form-select library-full-sort">
+            <option value="date">Newest</option>
+            <option value="alpha">A-Z</option>
+            <option value="key">Key</option>
+            <option value="group">Group</option>
+          </select>
+        </div>
+      </div>
+      <div class="library-card-grid" id="library-card-grid"></div>
+    </section>
+  </main>
+
   <!-- ===== STATUS BAR ===== -->
   <footer class="status-bar" id="status-bar">
     <div class="status-bar-left">
@@ -262,7 +356,7 @@
     </div>
     <div class="status-bar-right">
       <span id="status-sections">0 sections</span>
-      <span id="status-key">—</span>
+      <span id="status-key">-</span>
     </div>
   </footer>
 
@@ -309,6 +403,55 @@
   </div>
 </div>
 
+<!-- Save Version Modal -->
+<div id="version-modal" class="modal-overlay">
+  <div class="modal-content modal-content-sm">
+    <h3 class="modal-title">Save Version</h3>
+    <div class="form-group">
+      <label class="form-label" for="version-name-input">Name</label>
+      <input id="version-name-input" class="form-input" type="text" placeholder="Version name...">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="version-notes-input">Notes</label>
+      <textarea id="version-notes-input" class="form-input input-notes" rows="4" placeholder="What changed in this version?"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="btn-version-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-version-save">Save Version</button>
+    </div>
+  </div>
+</div>
+
+<!-- Group Modal -->
+<div id="group-modal" class="modal-overlay">
+  <div class="modal-content modal-content-sm">
+    <h3 class="modal-title" id="group-modal-title">New Group</h3>
+    <div class="form-group">
+      <label class="form-label" for="group-name-input">Name</label>
+      <input id="group-name-input" class="form-input" type="text" placeholder="Setlist or folder name...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="btn-group-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-group-save">Save Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- Collect Section Modal -->
+<div id="collect-section-modal" class="modal-overlay">
+  <div class="modal-content modal-content-sm">
+    <h3 class="modal-title">Collect Section</h3>
+    <div class="form-group">
+      <label class="form-label" for="collect-section-name-input">Name</label>
+      <input id="collect-section-name-input" class="form-input" type="text" placeholder="Reusable section name...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="btn-collect-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-collect-save">Save Section</button>
+    </div>
+  </div>
+</div>
+
 <!-- Shortcuts Modal -->
 <div id="shortcuts-modal" class="modal-overlay">
   <div class="modal-content modal-content-sm">
@@ -350,6 +493,7 @@
 <script src="./src-js/editor.js"></script>
 <script src="./src-js/import-export.js"></script>
 <script src="./src-js/ui.js"></script>
+<script src="./src-js/workflow.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

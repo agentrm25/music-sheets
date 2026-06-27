@@ -41,6 +41,7 @@
 
   function init() {
     bindEvents();
+    if (app.bindWorkflowEvents) app.bindWorkflowEvents();
     populateTemplates();
     
     // Load from storage or start fresh
@@ -55,6 +56,11 @@
     if (app.renderEditor) app.renderEditor();
     if (app.renderPreview) app.renderPreview();
     if (app.renderSavedCharts) app.renderSavedCharts();
+    if (app.renderInfoPanel) app.renderInfoPanel();
+    if (app.renderCollectedSections) app.renderCollectedSections();
+    if (app.renderVersions) app.renderVersions();
+    if (app.showEditorTab) app.showEditorTab('sections');
+    if (app.showWorkspace) app.showWorkspace('editor');
     
     undoManager.clear();
     app.pushUndo(); // Set initial undo state
@@ -326,7 +332,7 @@
       display.dataset.steps = next;
       display.textContent = (next > 0 ? '+' : '') + next;
       setTimeout(() => {
-        display.textContent = '—';
+        display.textContent = '-';
         display.dataset.steps = 0;
       }, 1500);
     }

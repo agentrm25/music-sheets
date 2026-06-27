@@ -4,6 +4,7 @@
   app.commitChange = function() {
     if (app.renderEditor) app.renderEditor();
     if (app.renderPreview) app.renderPreview();
+    if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
     if (app.autoSave) app.autoSave();
   };
 
@@ -70,7 +71,7 @@
     const secEl = document.getElementById('status-sections');
     const keyEl = document.getElementById('status-key');
     if (secEl) secEl.textContent = `${app.state.sections.length} section${app.state.sections.length !== 1 ? 's' : ''}`;
-    if (keyEl) keyEl.textContent = app.state.key ? `Key: ${app.state.key}` : '—';
+    if (keyEl) keyEl.textContent = app.state.key ? `Key: ${app.state.key}` : '-';
   };
 
   app.updateAutoSaveStatus = function(text) {
@@ -151,6 +152,7 @@
           all[idx].isFavorite = chart.isFavorite;
           localStorage.setItem('chart-creator-saved', JSON.stringify(all));
           app.renderSavedCharts();
+          if (app.renderFullLibrary) app.renderFullLibrary();
         }
       };
 
@@ -182,6 +184,14 @@
     document.getElementById('input-key').value = app.state.key || '';
     document.getElementById('input-capo').value = app.state.capo || '';
     document.getElementById('input-notes').value = app.state.arrangementNotes || '';
+    const groupInput = document.getElementById('input-group');
+    const statusInput = document.getElementById('input-status');
+    const sourceInput = document.getElementById('input-source');
+    const infoNotesInput = document.getElementById('input-info-notes');
+    if (groupInput) groupInput.value = app.state.groupId || '';
+    if (statusInput) statusInput.value = app.state.status || '';
+    if (sourceInput) sourceInput.value = app.state.source || '';
+    if (infoNotesInput) infoNotesInput.value = app.state.infoNotes || '';
   };
 
   app.searchAndReplace = function() {

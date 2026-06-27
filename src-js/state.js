@@ -24,6 +24,10 @@
       originalKey: '',
       capo: '',
       arrangementNotes: '',
+      groupId: '',
+      status: '',
+      source: '',
+      infoNotes: '',
       sections: []
     };
   };
@@ -62,6 +66,10 @@
       originalKey: obj.originalKey || '',
       capo: obj.capo || '',
       arrangementNotes: obj.arrangementNotes || '',
+      groupId: obj.groupId || '',
+      status: obj.status || '',
+      source: obj.source || '',
+      infoNotes: obj.infoNotes || '',
       sections: []
     };
 
@@ -100,11 +108,11 @@
 
   app.SECTION_TEMPLATES = [
     { name: 'Empty (default)', lines: function () { return [app.createLine('chord'), app.createLine('lyric')]; } },
-    { name: 'Verse \u2014 4 bar', lines: function () { const arr = []; for (let i = 0; i < 4; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
-    { name: 'Chorus \u2014 8 bar', lines: function () { const arr = []; for (let i = 0; i < 8; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
-    { name: 'Bridge \u2014 4 bar', lines: function () { const arr = []; for (let i = 0; i < 4; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
-    { name: 'Intro / Outro \u2014 chords only', lines: function () { return [app.createLine('chord'), app.createLine('chord'), app.createLine('chord'), app.createLine('chord')]; } },
-    { name: 'Instrumental \u2014 8 bar chords', lines: function () { const arr = []; for (let i = 0; i < 8; i++) arr.push(app.createLine('chord')); return arr; } }
+    { name: 'Verse - 4 bar', lines: function () { const arr = []; for (let i = 0; i < 4; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
+    { name: 'Chorus - 8 bar', lines: function () { const arr = []; for (let i = 0; i < 8; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
+    { name: 'Bridge - 4 bar', lines: function () { const arr = []; for (let i = 0; i < 4; i++) { const l = app.createLine('grid'); l.chords = ''; arr.push(l); } return arr; } },
+    { name: 'Intro / Outro - chords only', lines: function () { return [app.createLine('chord'), app.createLine('chord'), app.createLine('chord'), app.createLine('chord')]; } },
+    { name: 'Instrumental - 8 bar chords', lines: function () { const arr = []; for (let i = 0; i < 8; i++) arr.push(app.createLine('chord')); return arr; } }
   ];
 
 })(window.ChartApp = window.ChartApp || {});
