@@ -419,14 +419,11 @@
             pdf.text(line.content, pageWidth / 2, y + size, { align: 'center' });
             y += height;
           } else if (line.type === 'grid') {
-            const useMonospace = line.chords ? true : false;
-            const fontName = useMonospace ? 'courier' : 'helvetica';
-
             if (line.chords) {
               const size = getScaledFontSize(line.chords, chordFontSize);
               const height = size * lineHeightMultiplier;
               checkPageBreak(height);
-              pdf.setFont(fontName, 'bold');
+              pdf.setFont('helvetica', 'bold');
               pdf.setFontSize(size);
               setColor('#1a55d4');
               pdf.text(line.chords, pageWidth / 2, y + size, { align: 'center' });
@@ -447,26 +444,16 @@
                 const totalW = pdf.getTextWidth(cleanFullText);
                 let startX = (pageWidth - totalW) / 2;
 
-                pdf.setFont(fontName, 'bold');
+                pdf.setFont('helvetica', 'bold');
                 setColor(info.vNumColor);
                 pdf.text(info.vNumText, startX, y + size);
                 startX += pdf.getTextWidth(info.vNumText);
 
                 setColor('#000000');
-                if (useMonospace) {
-                  pdf.setFont('courier', 'bold');
-                  pdf.text(line.content.replace(/\*\*/g, ''), startX, y + size);
-                } else {
-                  drawTextWithInlineBold(line.content, startX, y + size, true, 'left');
-                }
+                drawTextWithInlineBold(line.content, startX, y + size, true, 'left');
               } else {
                 pdf.setTextColor(0, 0, 0);
-                if (useMonospace) {
-                  pdf.setFont('courier', info.isBold ? 'bold' : 'normal');
-                  pdf.text(line.content.replace(/\*\*/g, ''), pageWidth / 2, y + size, { align: 'center' });
-                } else {
-                  drawTextWithInlineBold(line.content, pageWidth / 2, y + size, info.isBold, 'center');
-                }
+                drawTextWithInlineBold(line.content, pageWidth / 2, y + size, info.isBold, 'center');
               }
               y += height;
             }
