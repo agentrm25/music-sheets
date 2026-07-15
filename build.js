@@ -15,26 +15,32 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
-const dist = path.join(__dirname, 'dist');
-if (!fs.existsSync(dist)) {
+function buildAssets(rootDir = __dirname, outputDirectory = 'dist') {
+  const dist = path.join(rootDir, outputDirectory);
+  fs.rmSync(dist, { recursive: true, force: true });
   fs.mkdirSync(dist, { recursive: true });
+
+  const filesToCopy = [
+    'index.html',
+    'app.js',
+    'style.css',
+    'icon.png',
+    'src-js',
+    'jspdf.umd.min.js'
+  ];
+
+  filesToCopy.forEach(file => {
+    const src = path.join(rootDir, file);
+    const dest = path.join(dist, file);
+    if (fs.existsSync(src)) {
+      copyRecursiveSync(src, dest);
+    }
+  });
 }
 
-const filesToCopy = [
-  'index.html',
-  'app.js',
-  'style.css',
-  'icon.png',
-  'src-js',
-  'jspdf.umd.min.js'
-];
+if (require.main === module) {
+  buildAssets();
+  console.log('Build assets copied to dist/');
+}
 
-filesToCopy.forEach(file => {
-  const src = path.join(__dirname, file);
-  const dest = path.join(dist, file);
-  if (fs.existsSync(src)) {
-    copyRecursiveSync(src, dest);
-  }
-});
-
-console.log('Build assets copied to dist/');
+module.exports = { buildAssets };

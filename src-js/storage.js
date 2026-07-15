@@ -6,6 +6,7 @@
   const STORAGE_SETTINGS_KEY = 'chart-creator-settings';
   const STORAGE_GROUPS_KEY = 'chart-creator-groups';
   const STORAGE_COLLECTED_SECTIONS_KEY = 'chart-creator-collected-sections';
+  const LEGACY_TIMESTAMP = '1970-01-01T00:00:00.000Z';
 
   let autoSaveTimeout = null;
 
@@ -15,17 +16,81 @@
       : null;
   }
 
-  function getChartFileName(name) {
-    const clean = (name || 'Untitled Chart')
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/[. ]+$/g, '');
-    return `${clean || 'Untitled Chart'}.json`;
+  function getChartFileName(id) {
+    if (typeof id !== 'string' || !id) {
+      throw new Error('Chart ID is required for folder saving.');
+    }
+    const bytes = new TextEncoder().encode(id);
+    if (bytes.length > 100) {
+      throw new Error('Chart ID is too long for folder saving.');
+    }
+    const encodedId = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return `chart-${encodedId}.json`;
   }
 
   function cloneData(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function stableHash(value) {
+    const text = String(value);
+    let first = 2166136261;
+    let second = 3335557771;
+    for (let index = 0; index < text.length; index++) {
+      const code = text.charCodeAt(index);
+      first = Math.imul(first ^ code, 16777619);
+      second = Math.imul(second ^ code, 2246822519);
+    }
+    return `${(first >>> 0).toString(36)}${(second >>> 0).toString(36)}`;
+  }
+
+  function legacyId(kind, seed) {
+    return `legacy-${kind}-${stableHash(seed)}`;
+  }
+
+  function withStableSectionIds(value, seed) {
+    if (!value || typeof value !== 'object') return value;
+    const section = cloneData(value);
+    const sectionSeed = `${seed}:${JSON.stringify(section)}`;
+    section.id = app.normalizeId(section.id, () => legacyId('section', sectionSeed));
+    if (Array.isArray(section.lines)) {
+      section.lines = section.lines.map((line, lineIndex) => {
+        if (!line || typeof line !== 'object') return line;
+        const copy = cloneData(line);
+        const lineSeed = `${section.id}:line:${lineIndex}:${JSON.stringify(copy)}`;
+        copy.id = app.normalizeId(copy.id, () => legacyId('line', lineSeed));
+        return copy;
+      });
+    }
+    return section;
+  }
+
+  function withStableStateIds(value, seed) {
+    const state = value && typeof value === 'object' ? cloneData(value) : {};
+    state.id = app.normalizeId(state.id, () => legacyId('chart', seed));
+    if (!Array.isArray(state.sections)) return state;
+
+    state.sections = state.sections.map((section, sectionIndex) =>
+      withStableSectionIds(section, `${seed}:section:${sectionIndex}`)
+    );
+    return state;
+  }
+
+  function withStableLegacyIds(entry, entryIndex) {
+    const raw = entry && typeof entry === 'object' ? cloneData(entry) : {};
+    const entrySeed = `entry:${entryIndex}:${JSON.stringify(raw)}`;
+    raw.data = withStableStateIds(raw.data, entrySeed);
+    if (Array.isArray(raw.versions)) {
+      raw.versions = raw.versions.map((version, versionIndex) => {
+        if (!version || typeof version !== 'object') return version;
+        const versionSeed = `${entrySeed}:version:${versionIndex}:${JSON.stringify(version)}`;
+        version.id = app.normalizeId(version.id, () => legacyId('version', versionSeed));
+        version.data = withStableStateIds(version.data, versionSeed);
+        version.data.id = raw.data.id;
+        return version;
+      });
+    }
+    return raw;
   }
 
   function normalizeVersion(version) {
@@ -35,15 +100,15 @@
       id: version.id || app.generateId(),
       name: version.name || 'Untitled Version',
       notes: version.notes || '',
-      createdAt: version.createdAt || new Date().toISOString(),
+      createdAt: version.createdAt || LEGACY_TIMESTAMP,
       key: version.key || data.key || '',
       sectionsCount: version.sectionsCount !== undefined ? version.sectionsCount : data.sections.length,
       data
     };
   }
 
-  function normalizeSavedChartEntry(entry) {
-    const raw = entry && typeof entry === 'object' ? entry : {};
+  function normalizeSavedChartEntry(entry, entryIndex) {
+    const raw = withStableLegacyIds(entry, entryIndex);
     const data = app.normalizeState(raw.data || {});
     const groupId = raw.groupId || data.groupId || '';
     data.groupId = groupId;
@@ -54,7 +119,7 @@
     return {
       name: raw.name || data.title || 'Untitled Chart',
       data,
-      savedAt: raw.savedAt || new Date().toISOString(),
+      savedAt: raw.savedAt || LEGACY_TIMESTAMP,
       key: raw.key !== undefined ? raw.key : data.key || '',
       sectionsCount: raw.sectionsCount !== undefined ? raw.sectionsCount : data.sections.length,
       isFavorite: !!raw.isFavorite,
@@ -117,16 +182,36 @@
   app.getSettings = function() {
     try {
       const data = localStorage.getItem(STORAGE_SETTINGS_KEY);
-      return Object.assign({ saveDirectory: '' }, data ? JSON.parse(data) : {});
+      return Object.assign({ saveDirectory: '', theme: 'dark' }, data ? JSON.parse(data) : {});
     } catch {
-      return { saveDirectory: '' };
+      return { saveDirectory: '', theme: 'dark' };
     }
   };
 
   app.saveSettings = function(settings) {
-    const next = Object.assign({ saveDirectory: '' }, settings || {});
+    const next = Object.assign({ saveDirectory: '', theme: 'dark' }, settings || {});
     localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(next));
     app.renderSettings();
+  };
+
+  app.applyTheme = function(theme) {
+    const normalizedTheme = theme === 'light' ? 'light' : 'dark';
+    const isLight = normalizedTheme === 'light';
+    document.body?.classList.toggle('light-mode', isLight);
+    const toggle = document.getElementById('btn-dark-mode');
+    if (toggle) {
+      toggle.textContent = isLight ? '☀️' : '🌙';
+      toggle.setAttribute('aria-pressed', String(isLight));
+      toggle.setAttribute('aria-label', 'Light mode');
+      toggle.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+    return normalizedTheme;
+  };
+
+  app.setTheme = function(theme) {
+    const normalizedTheme = app.applyTheme(theme);
+    app.saveSettings(Object.assign(app.getSettings(), { theme: normalizedTheme }));
+    return normalizedTheme;
   };
 
   app.renderSettings = function() {
@@ -136,12 +221,12 @@
   app.openSettings = function() {
     app.renderSettings();
     const modal = document.getElementById('settings-modal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) app.openModal(modal, { initialFocus: document.getElementById('btn-settings-close') });
   };
 
   app.closeSettings = function() {
     const modal = document.getElementById('settings-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) app.closeModal(modal);
   };
 
   app.chooseSaveDirectory = async function() {
@@ -173,7 +258,7 @@
     const settings = app.getSettings();
     if (!invoke || !settings.saveDirectory) return null;
 
-    const fileName = getChartFileName(entry.name);
+    const fileName = getChartFileName(entry && entry.data && entry.data.id);
     const contents = JSON.stringify(entry.data, null, 2);
     return invoke('save_chart_file', {
       directory: settings.saveDirectory,
@@ -211,7 +296,8 @@
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        app.state = app.normalizeState(parsed);
+        const stable = withStableStateIds(parsed, `draft:${JSON.stringify(parsed)}`);
+        app.state = app.normalizeState(stable);
         return true;
       }
     } catch (e) {
@@ -224,13 +310,7 @@
     try {
       const data = localStorage.getItem(STORAGE_CHARTS_KEY);
       const parsed = data ? JSON.parse(data) : [];
-      const charts = Array.isArray(parsed) ? parsed.map(normalizeSavedChartEntry) : [];
-      try {
-        saveCharts(charts);
-      } catch (e) {
-        console.warn('Failed to save migrated charts:', e);
-      }
-      return charts;
+      return Array.isArray(parsed) ? parsed.map(normalizeSavedChartEntry) : [];
     } catch {
       return [];
     }
@@ -269,7 +349,10 @@
       console.error('Library save failed:', e);
       if (e.name === 'QuotaExceededError' || e.code === 22) {
         app.showToast('Storage quota exceeded! Export JSON or prune library.', 'error');
-        alert('Local storage is full! Please export your chart as JSON or delete older saved charts to free up space.');
+        app.showAlert(
+          'Local storage is full! Please export your chart as JSON or delete older saved charts to free up space.',
+          'Storage full'
+        );
       } else {
         app.showToast('Failed to save to library.', 'error');
       }
@@ -284,13 +367,26 @@
       app.state = app.normalizeState(chart.data);
       app.state.groupId = chart.groupId || app.state.groupId || '';
       if (!app.state.id) app.state.id = id;
+      if (app.refreshUndoState) app.refreshUndoState();
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();
       if (app.updateStatusBar) app.updateStatusBar();
       if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       if (app.showWorkspace) app.showWorkspace('editor');
+      document.getElementById('input-title')?.focus();
+      app.autoSave(true);
       app.showToast(`Loaded "${chart.name}"`, 'info');
+    }
+  };
+
+  app.requestLoadChartFromLibrary = function(id) {
+    if (!app.getSavedCharts().some(chart => chart.data.id === id)) return;
+    const load = () => app.loadChartFromLibrary(id);
+    if (app.isCurrentChartDirty()) {
+      app.showConfirm('Load chart? Unsaved changes to the current chart will be lost.', load);
+    } else {
+      load();
     }
   };
 
@@ -316,11 +412,11 @@
       if (!Array.isArray(parsed)) return [];
       return parsed
         .filter(group => group && typeof group === 'object')
-        .map(group => ({
-          id: group.id || app.generateId(),
+        .map((group, index) => ({
+          id: app.normalizeId(group.id, () => legacyId('group', `group:${index}:${JSON.stringify(group)}`)),
           name: group.name || 'Untitled Group',
-          createdAt: group.createdAt || new Date().toISOString(),
-          updatedAt: group.updatedAt || group.createdAt || new Date().toISOString()
+          createdAt: group.createdAt || LEGACY_TIMESTAMP,
+          updatedAt: group.updatedAt || group.createdAt || LEGACY_TIMESTAMP
         }));
     } catch {
       return [];
@@ -406,15 +502,18 @@
       if (!Array.isArray(parsed)) return [];
       return parsed
         .filter(item => item && typeof item === 'object' && item.section)
-        .map(item => ({
-          id: item.id || app.generateId(),
-          name: item.name || 'Collected Section',
-          type: item.type || item.section.type || 'custom',
-          sourceChartId: item.sourceChartId || '',
-          sourceChartTitle: item.sourceChartTitle || 'Untitled Chart',
-          savedAt: item.savedAt || new Date().toISOString(),
-          section: item.section
-        }));
+        .map((item, index) => {
+          const seed = `collected:${index}:${JSON.stringify(item)}`;
+          return {
+            id: app.normalizeId(item.id, () => legacyId('collected', seed)),
+            name: item.name || 'Collected Section',
+            type: item.type || item.section.type || 'custom',
+            sourceChartId: item.sourceChartId || '',
+            sourceChartTitle: item.sourceChartTitle || 'Untitled Chart',
+            savedAt: item.savedAt || LEGACY_TIMESTAMP,
+            section: withStableSectionIds(item.section, seed)
+          };
+        });
     } catch {
       return [];
     }
@@ -480,6 +579,12 @@
     app.showToast(item ? `Removed "${item.name}"` : 'Removed section', 'info');
   };
 
+  app.requestDeleteCollectedSection = function(id) {
+    const item = app.getCollectedSections().find(entry => entry.id === id);
+    if (!item) return;
+    app.showConfirm(`Delete "${item.name}" permanently?`, () => app.deleteCollectedSection(id));
+  };
+
   app.isCurrentChartDirty = function() {
     if (!app.state || !app.state.id) return true;
     const chart = app.getSavedCharts().find(c => c.data.id === app.state.id);
@@ -524,6 +629,7 @@
       app.pushUndo();
       app.state = app.normalizeState(version.data);
       app.state.groupId = chart.groupId || app.state.groupId || '';
+      if (app.refreshUndoState) app.refreshUndoState();
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();

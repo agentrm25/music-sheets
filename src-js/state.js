@@ -5,12 +5,47 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   };
 
+  app.normalizeId = function(value, fallback) {
+    const candidate = typeof value === 'string' ? value.trim() : '';
+    if (candidate && new TextEncoder().encode(candidate).length <= 100) return candidate;
+    const replacement = typeof fallback === 'function' ? fallback() : fallback;
+    return typeof replacement === 'string' && replacement.trim()
+      ? replacement.trim()
+      : app.generateId();
+  };
+
+  app.normalizeIntegerInRange = function(value, min, max) {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    if (typeof value !== 'number' && typeof value !== 'string') return null;
+
+    const number = Number(value);
+    if (!Number.isFinite(number)) return null;
+
+    return Math.min(max, Math.max(min, Math.trunc(number)));
+  };
+
+  app.normalizeBpm = function(value) {
+    return app.normalizeIntegerInRange(value, 20, 300);
+  };
+
+  app.normalizeVerseNumber = function(value) {
+    return app.normalizeIntegerInRange(value, 1, 99);
+  };
+
+  app.normalizeRepeat = function(value) {
+    return app.normalizeIntegerInRange(value, 1, 99);
+  };
+
   app.getNextVerseNumber = function(sections) {
     if (!sections) return 1;
     const verseNums = sections
-      .filter(s => s.type === 'verse' && s.verseNumber)
-      .map(s => s.verseNumber);
-    return verseNums.length > 0 ? Math.max(...verseNums) + 1 : 1;
+      .filter(s => s && s.type === 'verse')
+      .map(s => app.normalizeVerseNumber(s.verseNumber))
+      .filter(value => value !== null);
+    return verseNums.length > 0
+      ? app.normalizeVerseNumber(Math.max(...verseNums) + 1)
+      : 1;
   };
 
   app.createEmptyChart = function() {
@@ -40,6 +75,7 @@
       collapsed: false,
       repeat: null,
       customLabel: '',
+      editorHeight: '',
       lines: []
     };
   };
@@ -57,10 +93,10 @@
       return app.createEmptyChart();
     }
     const cleanState = {
-      id: obj.id || app.generateId(),
+      id: app.normalizeId(obj.id),
       title: obj.title || '',
       artist: obj.artist || '',
-      bpm: obj.bpm !== undefined ? obj.bpm : null,
+      bpm: app.normalizeBpm(obj.bpm),
       timeSignature: obj.timeSignature || '',
       key: obj.key || '',
       originalKey: obj.originalKey || '',
@@ -77,19 +113,22 @@
       cleanState.sections = obj.sections.map(section => {
         if (!section || typeof section !== 'object') return null;
         const cleanSection = {
-          id: section.id || app.generateId(),
+          id: app.normalizeId(section.id),
           type: section.type || 'verse',
-          verseNumber: section.verseNumber || null,
+          verseNumber: app.normalizeVerseNumber(section.verseNumber),
           collapsed: !!section.collapsed,
-          repeat: section.repeat || null,
+          repeat: app.normalizeRepeat(section.repeat),
           customLabel: section.customLabel || '',
+          editorHeight: typeof section.editorHeight === 'string' && /^\d+(?:\.\d+)?px$/.test(section.editorHeight)
+            ? section.editorHeight
+            : '',
           lines: []
         };
         if (Array.isArray(section.lines)) {
           cleanSection.lines = section.lines.map(line => {
             if (!line || typeof line !== 'object') return null;
             const cleanLine = {
-              id: line.id || app.generateId(),
+              id: app.normalizeId(line.id),
               type: line.type || 'lyric',
               content: line.content || '',
               bold: !!line.bold

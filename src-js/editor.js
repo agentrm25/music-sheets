@@ -26,15 +26,18 @@
 
   function createActionBtn(icon, title, onClick) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'btn btn-ghost btn-icon btn-sm';
     btn.innerHTML = icon;
     btn.title = title;
+    btn.setAttribute('aria-label', title);
     btn.addEventListener('click', onClick);
     return btn;
   }
 
   function createSmallBtn(label, onClick) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'btn btn-sm btn-ghost';
     btn.textContent = label;
     btn.addEventListener('click', onClick);
@@ -43,9 +46,11 @@
 
   function createLineActionBtn(icon, title, onClick) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'line-action-btn';
     btn.textContent = icon;
     btn.title = title;
+    btn.setAttribute('aria-label', title);
     btn.addEventListener('click', onClick);
     return btn;
   }
@@ -68,7 +73,13 @@
     };
   }
 
-  function moveSection(sourceId, targetId, position) {
+  function focusSectionDragHandle(sectionId) {
+    const card = Array.from(document.querySelectorAll('.section-card'))
+      .find(item => item.dataset.sectionId === sectionId);
+    card?.querySelector('.section-drag-handle')?.focus();
+  }
+
+  function moveSection(sourceId, targetId, position, restoreFocus = false) {
     const fromIdx = app.state.sections.findIndex(s => s.id === sourceId);
     const toIdx = app.state.sections.findIndex(s => s.id === targetId);
     if (fromIdx < 0 || toIdx < 0) return false;
@@ -82,6 +93,7 @@
     app.state.sections.splice(targetIdx, 0, moved);
     app.pushUndo();
     app.commitChange();
+    if (restoreFocus) focusSectionDragHandle(sourceId);
     return true;
   }
 
@@ -148,6 +160,16 @@
 
     dragHandle.addEventListener('pointerdown', startDrag);
     dragHandle.addEventListener('click', e => e.stopPropagation());
+    dragHandle.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
+    dragHandle.addEventListener('keydown', event => {
+      if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+      const currentIndex = app.state.sections.findIndex(item => item.id === section.id);
+      const targetIndex = event.key === 'ArrowUp' ? currentIndex - 1 : currentIndex + 1;
+      const target = app.state.sections[targetIndex];
+      if (!target) return;
+      event.preventDefault();
+      moveSection(section.id, target.id, event.key === 'ArrowUp' ? 'above' : 'below', true);
+    });
   }
 
   app.renderEditor = function() {
@@ -179,9 +201,12 @@
     header.className = 'section-card-header';
 
     const collapseToggle = document.createElement('button');
+    collapseToggle.type = 'button';
     collapseToggle.className = 'section-collapse-toggle';
     collapseToggle.innerHTML = '<span class="chevron">▾</span>';
     collapseToggle.title = 'Collapse/expand section';
+    collapseToggle.setAttribute('aria-label', `${section.collapsed ? 'Expand' : 'Collapse'} section`);
+    collapseToggle.setAttribute('aria-expanded', String(!section.collapsed));
     collapseToggle.addEventListener('click', e => {
       e.stopPropagation();
       app.toggleSectionCollapse(section.id);
@@ -196,6 +221,7 @@
 
     const typeSelect = document.createElement('select');
     typeSelect.className = 'section-type-select';
+    typeSelect.setAttribute('aria-label', 'Section type');
     Object.keys(app.SECTION_META).forEach(t => {
       const opt = document.createElement('option');
       opt.value = t;
@@ -225,9 +251,11 @@
       verseNumInput.max = '99';
       verseNumInput.value = section.verseNumber || 1;
       verseNumInput.title = 'Verse number';
+      verseNumInput.setAttribute('aria-label', 'Verse number');
       verseNumInput.addEventListener('change', () => {
         app.pushUndo();
-        section.verseNumber = parseInt(verseNumInput.value) || 1;
+        section.verseNumber = app.normalizeVerseNumber(verseNumInput.value) || 1;
+        verseNumInput.value = String(section.verseNumber);
         app.commitChange();
       });
     }
@@ -238,6 +266,7 @@
       customInput.className = 'form-input custom-label-input';
       customInput.placeholder = 'Label…';
       customInput.value = section.customLabel || '';
+      customInput.setAttribute('aria-label', 'Custom section label');
       customInput.addEventListener('focus', () => app.snapshotTextEdit());
       customInput.addEventListener('blur', () => app.commitTextEdit());
       customInput.addEventListener('input', () => {
@@ -274,7 +303,8 @@
       repeatInput.setAttribute('aria-label', 'Repeat count');
       repeatInput.addEventListener('change', () => {
         app.pushUndo();
-        section.repeat = repeatInput.value ? parseInt(repeatInput.value) : null;
+        section.repeat = app.normalizeRepeat(repeatInput.value);
+        repeatInput.value = section.repeat === null ? '' : String(section.repeat);
         app.commitChange();
       });
 
@@ -428,15 +458,66 @@
     return card;
   };
 
+  function focusLineDragHandle(lineId) {
+    const handle = Array.from(document.querySelectorAll('.line-drag-handle'))
+      .find(item => item.dataset.lineId === lineId);
+    handle?.focus();
+  }
+
+  function moveLineByKeyboard(sectionId, lineId, direction) {
+    const sectionIndex = app.state.sections.findIndex(item => item.id === sectionId);
+    const sourceSection = app.state.sections[sectionIndex];
+    if (!sourceSection) return false;
+    const lineIndex = sourceSection.lines.findIndex(item => item.id === lineId);
+    if (lineIndex < 0) return false;
+
+    let targetSection = sourceSection;
+    let targetIndex;
+    if (direction < 0) {
+      if (lineIndex > 0) {
+        targetIndex = lineIndex - 1;
+      } else {
+        targetSection = app.state.sections[sectionIndex - 1];
+        if (!targetSection) return false;
+        targetIndex = targetSection.lines.length;
+      }
+    } else if (lineIndex < sourceSection.lines.length - 1) {
+      targetIndex = lineIndex + 1;
+    } else {
+      targetSection = app.state.sections[sectionIndex + 1];
+      if (!targetSection) return false;
+      targetIndex = 0;
+    }
+
+    app.pushUndo();
+    const [moved] = sourceSection.lines.splice(lineIndex, 1);
+    targetSection.lines.splice(targetIndex, 0, moved);
+    app.commitChange();
+    focusLineDragHandle(lineId);
+    return true;
+  }
+
   app.buildLineItem = function(section, line, sIdx, lIdx) {
     const item = document.createElement('div');
     item.className = 'line-item';
+    item.dataset.lineId = line.id;
 
-    const dragHandle = document.createElement('span');
+    const dragHandle = document.createElement('button');
+    dragHandle.type = 'button';
     dragHandle.className = 'line-drag-handle';
+    dragHandle.dataset.lineId = line.id;
+    dragHandle.dataset.sectionId = section.id;
     dragHandle.innerHTML = '⠿';
     dragHandle.draggable = true;
-    dragHandle.title = 'Drag to reorder';
+    dragHandle.title = 'Drag to reorder or use Alt+Arrow keys';
+    dragHandle.setAttribute('aria-label', 'Reorder line by dragging or with Alt+Arrow Up or Down');
+    dragHandle.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
+    dragHandle.addEventListener('keydown', event => {
+      if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+      if (moveLineByKeyboard(section.id, line.id, event.key === 'ArrowUp' ? -1 : 1)) {
+        event.preventDefault();
+      }
+    });
     dragHandle.addEventListener('dragstart', e => {
       e.stopPropagation();
       app.lineDragState = { sectionId: section.id, lineId: line.id };
@@ -489,6 +570,7 @@
 
     const typeSelect = document.createElement('select');
     typeSelect.className = 'line-type-select';
+    typeSelect.setAttribute('aria-label', 'Line type');
     [
       { value: 'chord', label: 'Chord' },
       { value: 'lyric', label: 'Lyric' },
@@ -522,6 +604,7 @@
       chordInput.type = 'text';
       chordInput.value = line.chords || '';
       chordInput.placeholder = 'e.g. Am  C  G  D';
+      chordInput.setAttribute('aria-label', `Line ${lIdx + 1} chords`);
       chordInput.addEventListener('focus', () => app.snapshotTextEdit());
       chordInput.addEventListener('blur', () => app.commitTextEdit());
       chordInput.addEventListener('input', () => {
@@ -536,6 +619,7 @@
       lyricInput.type = 'text';
       lyricInput.value = line.content;
       lyricInput.placeholder = 'Lyrics go here…';
+      lyricInput.setAttribute('aria-label', `Line ${lIdx + 1} lyrics`);
       lyricInput.addEventListener('focus', () => app.snapshotTextEdit());
       lyricInput.addEventListener('blur', () => app.commitTextEdit());
       lyricInput.addEventListener('input', () => {
@@ -569,6 +653,8 @@
       input.className = `line-input ${line.type}${line.bold ? ' lyric-bold' : ''}`;
       input.value = line.content;
       input.placeholder = line.type === 'chord' ? 'e.g. Am, G, C, F' : line.type === 'instruction' ? 'e.g. [Drum fill]' : 'Lyrics… use **bold** for partial bold';
+      const inputTypeName = line.type === 'chord' ? 'chords' : line.type === 'instruction' ? 'instruction' : 'lyrics';
+      input.setAttribute('aria-label', `Line ${lIdx + 1} ${inputTypeName}`);
       input.addEventListener('focus', () => app.snapshotTextEdit());
       input.addEventListener('blur', () => app.commitTextEdit());
       input.addEventListener('input', () => {
@@ -602,8 +688,11 @@
     if (line.type === 'lyric' || line.type === 'grid') {
       boldBtn = document.createElement('button');
       boldBtn.className = `bold-toggle ${line.bold ? 'active' : ''}`;
+      boldBtn.type = 'button';
       boldBtn.textContent = 'B';
       boldBtn.title = 'Toggle bold (emphasized lyric)';
+      boldBtn.setAttribute('aria-label', 'Toggle bold lyric');
+      boldBtn.setAttribute('aria-pressed', String(!!line.bold));
       boldBtn.addEventListener('click', () => {
         app.pushUndo();
         line.bold = !line.bold;

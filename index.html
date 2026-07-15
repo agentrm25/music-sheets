@@ -31,8 +31,11 @@
       <button class="btn btn-sm" id="btn-load" title="Load Chart from JSON">
         <span>📂</span> Open
       </button>
-      <button class="btn btn-sm" id="btn-save-json" title="Save Chart as JSON">
-        <span>💾</span> Save
+      <button class="btn btn-sm" id="btn-save-library" title="Save to Library">
+        <span>💾</span> Save to Library
+      </button>
+      <button class="btn btn-sm" id="btn-export-json" title="Export Chart as JSON">
+        <span>📤</span> Export JSON
       </button>
       <div class="toolbar-divider"></div>
       <button class="btn btn-sm" id="btn-undo" title="Undo (Cmd+Z)" disabled>
@@ -42,10 +45,10 @@
         <span>↪</span> Redo
       </button>
       <div class="toolbar-divider"></div>
-      <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)">
+      <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">
         <span>❓</span>
       </button>
-      <button class="btn btn-sm btn-icon" id="btn-settings" title="Settings">
+      <button class="btn btn-sm btn-icon" id="btn-settings" title="Settings" aria-label="Settings">
         <span>⚙</span>
       </button>
       <button class="btn btn-sm btn-primary" id="btn-export-pdf" title="Export as PDF">
@@ -153,6 +156,18 @@
               <option value="A">A</option>
               <option value="Bb">Bb</option>
               <option value="B">B</option>
+              <option value="Cm">Cm</option>
+              <option value="C#m">C#m</option>
+              <option value="Dm">Dm</option>
+              <option value="Ebm">Ebm</option>
+              <option value="Em">Em</option>
+              <option value="Fm">Fm</option>
+              <option value="F#m">F#m</option>
+              <option value="Gm">Gm</option>
+              <option value="G#m">G#m</option>
+              <option value="Am">Am</option>
+              <option value="Bbm">Bbm</option>
+              <option value="Bm">Bm</option>
             </select>
           </div>
         </div>
@@ -162,24 +177,24 @@
       <div class="sidebar-section">
         <div class="sidebar-header sidebar-header-compact">Transpose</div>
         <div class="transpose-bar">
-          <button class="transpose-btn" id="btn-transpose-down" title="Transpose down one semitone">−</button>
+          <button class="transpose-btn" id="btn-transpose-down" title="Transpose down one semitone" aria-label="Transpose down one semitone">−</button>
           <span class="transpose-key" id="transpose-display">-</span>
-          <button class="transpose-btn" id="btn-transpose-up" title="Transpose up one semitone">+</button>
+          <button class="transpose-btn" id="btn-transpose-up" title="Transpose up one semitone" aria-label="Transpose up one semitone">+</button>
         </div>
       </div>
 
       <!-- Arrangement Notes -->
       <div class="sidebar-section">
         <div class="sidebar-header sidebar-header-compact">Notes</div>
-        <textarea id="input-notes" class="form-input input-notes" placeholder="Band cues, setlist notes..." rows="3"></textarea>
+        <textarea id="input-notes" class="form-input input-notes" placeholder="Band cues, setlist notes..." rows="3" aria-label="Arrangement notes"></textarea>
       </div>
 
       <!-- Saved Charts -->
       <div class="sidebar-section sidebar-section-flex">
         <div class="sidebar-header sidebar-header-compact">Saved Charts</div>
         <div class="library-search-row">
-          <input type="text" id="library-search" class="form-input library-search-input" placeholder="Search...">
-          <select id="library-sort" class="form-select library-sort-select">
+          <input type="text" id="library-search" class="form-input library-search-input" placeholder="Search..." aria-label="Search saved charts">
+          <select id="library-sort" class="form-select library-sort-select" aria-label="Sort saved charts">
             <option value="date">Newest</option>
             <option value="alpha">A-Z</option>
             <option value="key">Key</option>
@@ -196,17 +211,17 @@
       <div class="editor-toolbar">
         <div class="editor-toolbar-left">
           <div class="editor-tabs" role="tablist" aria-label="Editor tools">
-            <button class="editor-tab active" data-editor-tab="sections" type="button">Sections</button>
-            <button class="editor-tab" data-editor-tab="versions" type="button">Versions</button>
-            <button class="editor-tab" data-editor-tab="info" type="button">Info</button>
-            <button class="editor-tab" data-editor-tab="collected" type="button">Collected</button>
+            <button class="editor-tab active" id="sections-tab" data-editor-tab="sections" type="button" role="tab" aria-controls="sections-tab-panel" aria-selected="true" tabindex="0">Sections</button>
+            <button class="editor-tab" id="versions-tab" data-editor-tab="versions" type="button" role="tab" aria-controls="versions-tab-panel" aria-selected="false" tabindex="-1">Versions</button>
+            <button class="editor-tab" id="info-tab" data-editor-tab="info" type="button" role="tab" aria-controls="info-tab-panel" aria-selected="false" tabindex="-1">Info</button>
+            <button class="editor-tab" id="collected-tab" data-editor-tab="collected" type="button" role="tab" aria-controls="collected-tab-panel" aria-selected="false" tabindex="-1">Collected</button>
           </div>
         </div>
         <div class="editor-toolbar-left editor-tab-actions" data-editor-tab-actions="sections">
           <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
             <span>+</span> Add Section (Top)
           </button>
-          <select class="form-select template-select" id="template-select" title="Section template"></select>
+          <select class="form-select template-select" id="template-select" title="Section template" aria-label="Section template"></select>
           <button class="btn btn-sm" id="btn-import-text" title="Import from pasted text">
             <span>📋</span> Import Text
           </button>
@@ -218,15 +233,15 @@
         </div>
       </div>
 
-      <div class="editor-tab-panel active" id="sections-tab-panel" data-editor-tab-panel="sections">
+      <div class="editor-tab-panel active" id="sections-tab-panel" data-editor-tab-panel="sections" role="tabpanel" aria-labelledby="sections-tab">
         <!-- Search & Replace bar (inline, VS Code style) -->
         <div class="search-replace-bar" id="search-replace-bar" style="display:none;">
-          <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…">
-          <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…">
-          <label class="search-option" title="Case sensitive"><input type="checkbox" id="search-case-sensitive"> Aa</label>
-          <label class="search-option" title="Use regex"><input type="checkbox" id="search-regex"> .*</label>
+          <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…" aria-label="Find text">
+          <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…" aria-label="Replacement text">
+          <label class="search-option" title="Case sensitive"><input type="checkbox" id="search-case-sensitive" aria-label="Case sensitive"> Aa</label>
+          <label class="search-option" title="Use regex"><input type="checkbox" id="search-regex" aria-label="Use regular expressions"> .*</label>
           <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace All</button>
-          <button class="btn btn-sm btn-ghost" id="search-close-btn">✕</button>
+          <button class="btn btn-sm btn-ghost" id="search-close-btn" aria-label="Close find and replace">✕</button>
         </div>
 
         <div class="editor-sections" id="editor-sections">
@@ -247,7 +262,7 @@
         </div>
       </div>
 
-      <div class="editor-tab-panel" id="versions-tab-panel" data-editor-tab-panel="versions" hidden>
+      <div class="editor-tab-panel" id="versions-tab-panel" data-editor-tab-panel="versions" role="tabpanel" aria-labelledby="versions-tab" hidden>
         <div class="tool-panel-header">
           <div>
             <div class="tool-panel-title">Versions</div>
@@ -257,7 +272,7 @@
         <div class="versions-list" id="versions-list"></div>
       </div>
 
-      <div class="editor-tab-panel" id="info-tab-panel" data-editor-tab-panel="info" hidden>
+      <div class="editor-tab-panel" id="info-tab-panel" data-editor-tab-panel="info" role="tabpanel" aria-labelledby="info-tab" hidden>
         <div class="tool-panel-header">
           <div>
             <div class="tool-panel-title">Chart info</div>
@@ -284,7 +299,7 @@
         </div>
       </div>
 
-      <div class="editor-tab-panel" id="collected-tab-panel" data-editor-tab-panel="collected" hidden>
+      <div class="editor-tab-panel" id="collected-tab-panel" data-editor-tab-panel="collected" role="tabpanel" aria-labelledby="collected-tab" hidden>
         <div class="tool-panel-header">
           <div>
             <div class="tool-panel-title">Collected sections</div>
@@ -300,10 +315,10 @@
       <div class="preview-header">
         <span class="preview-header-title">Preview</span>
         <div class="preview-header-controls">
-          <button class="btn btn-sm btn-ghost" id="btn-dark-mode" title="Toggle Dark Mode">🌙</button>
-          <button class="btn btn-sm btn-ghost" id="btn-zoom-out" title="Zoom out">−</button>
+          <button class="btn btn-sm btn-ghost" id="btn-dark-mode" title="Switch to light mode" aria-label="Light mode" aria-pressed="false">🌙</button>
+          <button class="btn btn-sm btn-ghost" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
           <span id="zoom-level" class="zoom-level-text">60%</span>
-          <button class="btn btn-sm btn-ghost" id="btn-zoom-in" title="Zoom in">+</button>
+          <button class="btn btn-sm btn-ghost" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
         </div>
       </div>
       <div class="preview-scroll" id="preview-scroll">
@@ -322,7 +337,7 @@
     <aside class="library-groups-panel">
       <div class="library-groups-header">
         <span>Groups</span>
-        <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group">+</button>
+        <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group" aria-label="New group">+</button>
       </div>
       <div class="library-group-list" id="library-group-list"></div>
     </aside>
@@ -333,8 +348,8 @@
           <p class="library-subtitle">Browse saved charts by setlist or folder.</p>
         </div>
         <div class="library-controls">
-          <input type="text" id="full-library-search" class="form-input library-full-search" placeholder="Search charts...">
-          <select id="full-library-sort" class="form-select library-full-sort">
+          <input type="text" id="full-library-search" class="form-input library-full-search" placeholder="Search charts..." aria-label="Search full library">
+          <select id="full-library-sort" class="form-select library-full-sort" aria-label="Sort full library">
             <option value="date">Newest</option>
             <option value="alpha">A-Z</option>
             <option value="key">Key</option>
@@ -351,7 +366,7 @@
     <div class="status-bar-left">
       <div class="status-indicator">
         <div class="status-dot"></div>
-        <span id="status-autosave">Auto-saved</span>
+      <span id="status-autosave" role="status" aria-live="polite">Auto-saved</span>
       </div>
     </div>
     <div class="status-bar-right">
@@ -363,9 +378,9 @@
 </div>
 
 <!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay">
+<div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title">Settings</h3>
+    <h3 class="modal-title" id="settings-modal-title">Settings</h3>
     <div class="settings-panel">
       <label class="form-label" for="settings-save-folder">Saved songs folder</label>
       <div class="settings-folder-row">
@@ -382,20 +397,20 @@
 </div>
 
 <!-- Toast Container -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
 <!-- Hidden file input for JSON import -->
 <input type="file" id="file-input-json" accept=".json" class="hidden">
 
 <!-- Import Text Modal -->
-<div id="import-modal" class="modal-overlay">
+<div id="import-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="import-modal-title" aria-describedby="import-modal-description">
   <div class="modal-content">
-    <h3 class="modal-title">Import from Text</h3>
-    <p class="modal-description">
+    <h3 class="modal-title" id="import-modal-title">Import from Text</h3>
+    <p class="modal-description" id="import-modal-description">
       Paste raw chart text. Lines starting with chord names (A, Bm, C#m7, etc.) are detected as chords.
       Lines in <code>[brackets]</code> become section labels. Everything else is lyrics.
     </p>
-    <textarea id="import-textarea" class="modal-textarea" placeholder="Paste chart text here…"></textarea>
+    <textarea id="import-textarea" class="modal-textarea" placeholder="Paste chart text here…" aria-label="Chart text to import"></textarea>
     <div class="modal-footer">
       <button class="btn" id="btn-import-cancel">Cancel</button>
       <button class="btn btn-primary" id="btn-import-confirm">Import</button>
@@ -404,9 +419,9 @@
 </div>
 
 <!-- Save Version Modal -->
-<div id="version-modal" class="modal-overlay">
+<div id="version-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="version-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title">Save Version</h3>
+    <h3 class="modal-title" id="version-modal-title">Save Version</h3>
     <div class="form-group">
       <label class="form-label" for="version-name-input">Name</label>
       <input id="version-name-input" class="form-input" type="text" placeholder="Version name...">
@@ -423,7 +438,7 @@
 </div>
 
 <!-- Group Modal -->
-<div id="group-modal" class="modal-overlay">
+<div id="group-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
   <div class="modal-content modal-content-sm">
     <h3 class="modal-title" id="group-modal-title">New Group</h3>
     <div class="form-group">
@@ -438,9 +453,9 @@
 </div>
 
 <!-- Collect Section Modal -->
-<div id="collect-section-modal" class="modal-overlay">
+<div id="collect-section-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collect-section-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title">Collect Section</h3>
+    <h3 class="modal-title" id="collect-section-modal-title">Collect Section</h3>
     <div class="form-group">
       <label class="form-label" for="collect-section-name-input">Name</label>
       <input id="collect-section-name-input" class="form-input" type="text" placeholder="Reusable section name...">
@@ -453,16 +468,15 @@
 </div>
 
 <!-- Shortcuts Modal -->
-<div id="shortcuts-modal" class="modal-overlay">
+<div id="shortcuts-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title">Keyboard Shortcuts</h3>
+    <h3 class="modal-title" id="shortcuts-modal-title">Keyboard Shortcuts</h3>
     <table class="shortcuts-table">
       <tr><th><code>Cmd/Ctrl + Z</code></th><td>Undo</td></tr>
       <tr><th><code>Cmd/Ctrl + Shift + Z</code></th><td>Redo</td></tr>
       <tr><th><code>Cmd/Ctrl + H</code></th><td>Find & Replace</td></tr>
       <tr><th><code>Cmd/Ctrl + S</code></th><td>Save Chart</td></tr>
       <tr><th><code>Cmd/Ctrl + E</code></th><td>Export PDF</td></tr>
-      <tr><th><code>Cmd/Ctrl + Click</code></th><td>Select Multiple Sections</td></tr>
       <tr><th><code>?</code></th><td>Show this cheat sheet</td></tr>
     </table>
     <div class="modal-footer shortcuts-footer">
@@ -472,12 +486,24 @@
 </div>
 
 <!-- Custom Confirm Dialog (replaces native confirm() blocked by Tauri) -->
-<div id="confirm-modal" class="modal-overlay modal-overlay-top">
+<div id="confirm-modal" class="modal-overlay modal-overlay-top" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-message">
   <div class="modal-content modal-content-sm">
+    <h3 class="modal-title" id="confirm-modal-title">Confirm action</h3>
     <p id="confirm-message" class="confirm-message-text"></p>
     <div class="modal-footer">
       <button class="btn" id="confirm-cancel">Cancel</button>
       <button class="btn btn-danger" id="confirm-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Alert Dialog (replaces native alert() blocked by Tauri) -->
+<div id="alert-modal" class="modal-overlay modal-overlay-top" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-describedby="alert-message">
+  <div class="modal-content modal-content-sm">
+    <h3 class="modal-title" id="alert-modal-title">Notice</h3>
+    <p id="alert-message" class="confirm-message-text"></p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="alert-ok">OK</button>
     </div>
   </div>
 </div>

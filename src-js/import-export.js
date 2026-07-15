@@ -31,12 +31,12 @@
         else if (lowerLabel === 'instrumental') { type = 'instrumental'; customLabel = ''; }
         else if (/^\d+$/.test(label)) {
           type = 'verse';
-          verseNumber = parseInt(label);
+          verseNumber = app.normalizeVerseNumber(label);
           customLabel = '';
         }
 
         const repeatMatch = rest.match(/x(\d+)/i);
-        if (repeatMatch) repeat = parseInt(repeatMatch[1]);
+        if (repeatMatch) repeat = app.normalizeRepeat(repeatMatch[1]);
 
         currentSection = app.createSection(type);
         currentSection.verseNumber = verseNumber;
@@ -93,7 +93,8 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = (app.state.title || 'chart').replace(/[^a-zA-Z0-9 ]/g, '').trim() + '.json';
+    const fileName = (app.state.title || '').replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'chart';
+    a.download = `${fileName}.json`;
     a.click();
     URL.revokeObjectURL(url);
     app.showToast('JSON saved', 'success');
@@ -112,9 +113,11 @@
       if (data && Array.isArray(data.sections) && data.sections.every(s => s && s.id && s.type && Array.isArray(s.lines))) {
         app.pushUndo();
         app.state = app.normalizeState(data);
+        if (app.refreshUndoState) app.refreshUndoState();
         app.syncFormFromState();
         app.renderEditor();
         app.renderPreview();
+        if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
         app.autoSave();
         
         if (hasEncodingIssue) {

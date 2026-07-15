@@ -1,4 +1,5 @@
 /dist/
+/dist-qa/
 /.venv/
 /node_modules/
 *.log

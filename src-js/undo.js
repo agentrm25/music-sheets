@@ -8,6 +8,7 @@
       this.maxSize = maxSize || 50;
       this._isUndoRedo = false;
       this._textEditSnapshot = null;
+      this._hasPendingChange = false;
       this.onChange = onChange; // Callback for UI updates
     }
 
@@ -20,6 +21,7 @@
       if (this.index === -1) {
         this.stack = [clone];
         this.index = 0;
+        this._hasPendingChange = false;
         this._updateButtons();
         return;
       }
@@ -27,6 +29,8 @@
       this.stack = this.stack.slice(0, this.index + 1);
 
       if (JSON.stringify(clone) === JSON.stringify(this.stack[this.index])) {
+        this._hasPendingChange = false;
+        this._updateButtons();
         return;
       }
 
@@ -36,6 +40,21 @@
       } else {
         this.index++;
       }
+      this._hasPendingChange = false;
+      this._updateButtons();
+    }
+
+    refresh(currentState) {
+      if (this._isUndoRedo) return;
+      this.commitTextEdit(currentState);
+
+      this._hasPendingChange = this.index >= 0 &&
+        JSON.stringify(currentState) !== JSON.stringify(this.stack[this.index]);
+
+      if (this._hasPendingChange && this.index < this.stack.length - 1) {
+        this.stack = this.stack.slice(0, this.index + 1);
+      }
+
       this._updateButtons();
     }
 
@@ -48,10 +67,18 @@
         if (JSON.stringify(clone) !== JSON.stringify(this.stack[this.index])) {
           this.stack.push(clone);
           this.index++;
+          if (this.stack.length > this.maxSize) {
+            this.stack.shift();
+            this.index--;
+          }
         }
       }
 
-      if (this.index <= 0) return null;
+      this._hasPendingChange = false;
+      if (this.index <= 0) {
+        this._updateButtons();
+        return null;
+      }
 
       this._isUndoRedo = true;
       this.index--;
@@ -67,6 +94,7 @@
       this.index++;
       const snapshot = JSON.parse(JSON.stringify(this.stack[this.index]));
       this._isUndoRedo = false;
+      this._hasPendingChange = false;
       this._updateButtons();
       return snapshot;
     }
@@ -99,6 +127,8 @@
             }
           }
         }
+        this._hasPendingChange = this.index >= 0 &&
+          JSON.stringify(currentState) !== JSON.stringify(this.stack[this.index]);
         this._updateButtons();
       }
     }
@@ -107,12 +137,13 @@
       this.stack = [];
       this.index = -1;
       this._textEditSnapshot = null;
+      this._hasPendingChange = false;
       this._updateButtons();
     }
 
     _updateButtons() {
       if (this.onChange) {
-        this.onChange(this.index > 0, this.index < this.stack.length - 1);
+        this.onChange(this.index > 0 || this._hasPendingChange, this.index < this.stack.length - 1);
       }
     }
   }

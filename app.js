@@ -16,6 +16,7 @@
   app.pushUndo = () => undoManager.push(app.state);
   app.snapshotTextEdit = () => undoManager.snapshotTextEdit(app.state);
   app.commitTextEdit = () => undoManager.commitTextEdit(app.state);
+  app.refreshUndoState = () => undoManager.refresh(app.state);
   
   app.undo = () => {
     const snap = undoManager.undo(app.state);
@@ -24,6 +25,7 @@
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();
+      if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       if (app.autoSave) app.autoSave();
     }
   };
@@ -35,6 +37,7 @@
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();
+      if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       if (app.autoSave) app.autoSave();
     }
   };
@@ -51,6 +54,8 @@
       app.state.sections.push(app.createSection('verse'));
       app.state.sections.push(app.createSection('chorus'));
     }
+
+    if (app.applyTheme && app.getSettings) app.applyTheme(app.getSettings().theme);
     
     if (app.syncFormFromState) app.syncFormFromState();
     if (app.renderEditor) app.renderEditor();
@@ -81,7 +86,8 @@
       });
     });
 
-    document.getElementById('btn-save-json').addEventListener('click', () => app.saveChartToLibrary());
+    document.getElementById('btn-save-library').addEventListener('click', () => app.saveChartToLibrary());
+    document.getElementById('btn-export-json').addEventListener('click', () => app.exportJSON());
     document.getElementById('btn-export-pdf').addEventListener('click', () => app.exportPDF());
     document.getElementById('btn-settings').addEventListener('click', () => app.openSettings());
     
@@ -96,10 +102,10 @@
     });
 
     document.getElementById('btn-shortcuts').addEventListener('click', () => {
-      document.getElementById('shortcuts-modal').style.display = 'flex';
+      app.openModal('shortcuts-modal', { initialFocus: document.getElementById('btn-shortcuts-close') });
     });
     document.getElementById('btn-shortcuts-close').addEventListener('click', () => {
-      document.getElementById('shortcuts-modal').style.display = 'none';
+      app.closeModal('shortcuts-modal');
     });
 
     document.getElementById('btn-settings-close').addEventListener('click', () => app.closeSettings());
@@ -111,23 +117,56 @@
     document.getElementById('btn-redo').addEventListener('click', () => app.redo());
 
     // Sidebar inputs
-    ['title', 'artist', 'bpm', 'timesig', 'key', 'capo', 'notes'].forEach(id => {
+    [
+      ['title', 'title'],
+      ['artist', 'artist'],
+      ['timesig', 'timeSignature'],
+      ['key', 'key'],
+      ['original-key', 'originalKey'],
+      ['capo', 'capo'],
+      ['notes', 'arrangementNotes']
+    ].forEach(([id, prop]) => {
       const el = document.getElementById(`input-${id}`);
       if (!el) return;
       el.addEventListener('focus', () => app.snapshotTextEdit());
       el.addEventListener('blur', () => app.commitTextEdit());
       el.addEventListener('input', () => {
-        const prop = id === 'timesig' ? 'timeSignature' : id === 'notes' ? 'arrangementNotes' : id;
         app.state[prop] = el.value;
         if (id === 'key') {
           if (!app.state.originalKey && el.value) {
             app.state.originalKey = el.value;
+            const originalKeyInput = document.getElementById('input-original-key');
+            if (originalKeyInput) originalKeyInput.value = el.value;
           }
         }
         app.renderPreview();
         app.autoSave();
       });
     });
+
+    const bpmInput = document.getElementById('input-bpm');
+    if (bpmInput) {
+      const commitBpm = () => {
+        const normalized = app.normalizeBpm(bpmInput.value);
+        const normalizedValue = normalized === null ? '' : String(normalized);
+        const stateChanged = app.state.bpm !== normalized;
+        const inputChanged = bpmInput.value !== normalizedValue;
+        if (!stateChanged && !inputChanged) return;
+
+        app.state.bpm = normalized;
+        bpmInput.value = normalizedValue;
+        if (stateChanged) {
+          app.renderPreview();
+          app.autoSave();
+        }
+      };
+      bpmInput.addEventListener('focus', () => app.snapshotTextEdit());
+      bpmInput.addEventListener('blur', () => {
+        commitBpm();
+        app.commitTextEdit();
+      });
+      bpmInput.addEventListener('change', commitBpm);
+    }
 
     // Transpose
     document.getElementById('btn-transpose-up').addEventListener('click', () => transposeAll(1));
@@ -184,22 +223,26 @@
 
     document.getElementById('btn-import-text').addEventListener('click', () => {
       document.getElementById('import-textarea').value = '';
-      document.getElementById('import-modal').style.display = 'flex';
+      app.openModal('import-modal', { initialFocus: document.getElementById('import-textarea') });
     });
     
     document.getElementById('btn-import-cancel').addEventListener('click', () => {
-      document.getElementById('import-modal').style.display = 'none';
+      app.closeModal('import-modal');
     });
     
     document.getElementById('btn-import-confirm').addEventListener('click', () => {
       const text = document.getElementById('import-textarea').value;
-      if (!text.trim()) return;
+      if (!text.trim()) {
+        app.showToast('Paste chart text before importing', 'error');
+        document.getElementById('import-textarea').focus();
+        return;
+      }
       const newSections = app.parseImportText(text);
       if (newSections.length > 0) {
         app.pushUndo();
         app.state.sections = app.state.sections.concat(newSections);
         app.commitChange();
-        document.getElementById('import-modal').style.display = 'none';
+        app.closeModal('import-modal');
         app.showToast(`Imported ${newSections.length} sections`, 'success');
         setTimeout(() => {
           const cards = document.querySelectorAll('.section-card');
@@ -209,9 +252,9 @@
     });
 
     // Preview Tools
-    document.getElementById('btn-dark-mode').addEventListener('click', (e) => {
-      document.body.classList.toggle('light-mode');
-      e.target.textContent = document.body.classList.contains('light-mode') ? '☀️' : '🌙';
+    document.getElementById('btn-dark-mode').addEventListener('click', () => {
+      const currentTheme = app.getSettings().theme;
+      app.setTheme(currentTheme === 'light' ? 'dark' : 'light');
     });
 
     document.getElementById('btn-zoom-in').addEventListener('click', () => {
@@ -236,9 +279,24 @@
     document.addEventListener('keydown', e => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const cmd = isMac ? e.metaKey : e.ctrlKey;
+      const modalOpen = app.hasOpenModal && app.hasOpenModal();
+      const shortcutKey = e.key.toLowerCase();
+      const isAppShortcut = cmd && ['z', 's', 'h', 'f', 'e'].includes(shortcutKey);
+      const editableTarget = e.target && (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      );
+
+      if (modalOpen && (isAppShortcut || e.key === '?')) {
+        if (isAppShortcut && !(shortcutKey === 'z' && editableTarget)) e.preventDefault();
+        return;
+      }
+
+      if (cmd && shortcutKey === 'z' && editableTarget) return;
 
       if (e.key === '?' && !e.metaKey && !e.ctrlKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-        document.getElementById('shortcuts-modal').style.display = 'flex';
+        app.openModal('shortcuts-modal', { initialFocus: document.getElementById('btn-shortcuts-close') });
       }
 
       if (cmd && e.key.toLowerCase() === 'z') {
@@ -257,14 +315,24 @@
 
       if (cmd && e.key.toLowerCase() === 'h') {
         e.preventDefault();
-        const searchInput = document.getElementById('search-find-input');
-        if (searchInput) searchInput.focus();
+        app.openSearchReplace('replace');
       }
 
       if (cmd && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        const searchInput = document.getElementById('search-find-input');
-        if (searchInput) searchInput.focus();
+        app.openSearchReplace('find');
+      }
+
+      if (cmd && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        app.exportPDF();
+      }
+
+      if (e.key === 'Escape') {
+        const searchBar = document.getElementById('search-replace-bar');
+        if ((!app.hasOpenModal || !app.hasOpenModal()) && searchBar && searchBar.style.display !== 'none') {
+          app.closeSearchReplace();
+        }
       }
     });
 
@@ -338,9 +406,7 @@
     }
 
     app.syncFormFromState();
-    app.renderEditor();
-    app.renderPreview();
-    app.autoSave();
+    app.commitChange();
     app.showToast('Transposed chart', 'info');
   }
 

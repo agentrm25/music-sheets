@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "chart-creator-qa",
+  "version": "0.1.0",
+  "identifier": "com.chartcreator.music.qa",
+  "build": {
+    "frontendDist": "../dist-qa",
+    "devUrl": "http://127.0.0.1:1421",
+    "beforeDevCommand": "node script/prepare_qa_dist.js && npx -y http-server dist-qa -a 127.0.0.1 -p 1421",
+    "beforeBuildCommand": "node script/prepare_qa_dist.js"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Chart Creator QA — ISOLATED",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

@@ -143,6 +143,7 @@
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `library-group-btn ${app.librarySelectedGroupId === id ? 'active' : ''}`;
+    btn.setAttribute('aria-pressed', String(app.librarySelectedGroupId === id));
     btn.addEventListener('click', () => {
       app.librarySelectedGroupId = id;
       app.renderFullLibrary();
@@ -230,6 +231,7 @@
   function createGroupSelect(chart) {
     const select = document.createElement('select');
     select.className = 'form-select library-card-group-select';
+    select.setAttribute('aria-label', `Group for ${chart.name}`);
 
     const blank = document.createElement('option');
     blank.value = '';
@@ -255,13 +257,8 @@
   function createLibraryCard(chart) {
     const card = document.createElement('article');
     card.className = 'library-card';
-    card.addEventListener('click', () => {
-      if (app.state.sections.length > 0 && (!app.state.id || app.state.id !== chart.data.id)) {
-        app.showConfirm('Load chart? Unsaved changes to current chart will be lost.', () => app.loadChartFromLibrary(chart.data.id));
-      } else {
-        app.loadChartFromLibrary(chart.data.id);
-      }
-    });
+    const openChart = () => app.requestLoadChartFromLibrary(chart.data.id);
+    card.addEventListener('click', openChart);
 
     card.appendChild(createMiniChartPreview(chart.data));
 
@@ -280,6 +277,7 @@
     favBtn.className = `favorite-btn ${chart.isFavorite ? 'favorited' : ''}`;
     favBtn.textContent = chart.isFavorite ? '★' : '☆';
     favBtn.title = chart.isFavorite ? 'Remove from favorites' : 'Add to favorites';
+    favBtn.setAttribute('aria-label', favBtn.title);
     favBtn.addEventListener('click', e => {
       e.stopPropagation();
       const charts = app.getSavedCharts();
@@ -307,6 +305,17 @@
 
     const footer = document.createElement('div');
     footer.className = 'library-card-footer';
+
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'btn btn-sm btn-primary';
+    openBtn.textContent = 'Open';
+    openBtn.setAttribute('aria-label', `Open ${chart.name}`);
+    openBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      openChart();
+    });
+    footer.appendChild(openBtn);
     footer.appendChild(createGroupSelect(chart));
 
     const deleteBtn = document.createElement('button');
@@ -444,7 +453,7 @@
       deleteBtn.type = 'button';
       deleteBtn.className = 'btn btn-sm btn-ghost';
       deleteBtn.textContent = 'Delete';
-      deleteBtn.addEventListener('click', () => app.deleteCollectedSection(item.id));
+      deleteBtn.addEventListener('click', () => app.requestDeleteCollectedSection(item.id));
 
       actions.appendChild(insertBtn);
       actions.appendChild(deleteBtn);
@@ -464,7 +473,11 @@
   };
 
   app.showWorkspace = function(mode) {
-    app.activeWorkspace = mode === 'library' ? 'library' : 'editor';
+    const nextWorkspace = mode === 'library' ? 'library' : 'editor';
+    if (nextWorkspace === 'library' && app.isSearchReplaceOpen?.()) {
+      app.closeSearchReplace({ restore: false });
+    }
+    app.activeWorkspace = nextWorkspace;
     const editorView = $('editor-view');
     const libraryView = $('library-view');
     const editorBtn = $('btn-editor-view');
@@ -478,14 +491,25 @@
       libraryView.classList.toggle('active', app.activeWorkspace === 'library');
     }
     if (editorBtn) editorBtn.classList.toggle('active', app.activeWorkspace === 'editor');
-    if (libraryBtn) libraryBtn.classList.toggle('active', app.activeWorkspace === 'library');
+    if (editorBtn) editorBtn.setAttribute('aria-pressed', String(app.activeWorkspace === 'editor'));
+    if (libraryBtn) {
+      libraryBtn.classList.toggle('active', app.activeWorkspace === 'library');
+      libraryBtn.setAttribute('aria-pressed', String(app.activeWorkspace === 'library'));
+    }
     if (app.activeWorkspace === 'library') app.renderFullLibrary();
   };
 
   app.showEditorTab = function(tab) {
-    app.activeEditorTab = tab || 'sections';
+    const nextTab = tab || 'sections';
+    if (nextTab !== 'sections' && app.isSearchReplaceOpen?.()) {
+      app.closeSearchReplace({ restore: false });
+    }
+    app.activeEditorTab = nextTab;
     document.querySelectorAll('[data-editor-tab]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.editorTab === app.activeEditorTab);
+      const active = btn.dataset.editorTab === app.activeEditorTab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+      btn.tabIndex = active ? 0 : -1;
     });
     document.querySelectorAll('[data-editor-tab-panel]').forEach(panel => {
       const active = panel.dataset.editorTabPanel === app.activeEditorTab;
@@ -507,14 +531,13 @@
     if (!modal || !title || !input) return;
     title.textContent = group ? 'Rename Group' : 'New Group';
     input.value = group ? group.name : '';
-    modal.style.display = 'flex';
-    setTimeout(() => input.focus(), 0);
+    app.openModal(modal, { initialFocus: input });
   };
 
   app.closeGroupModal = function() {
     pendingGroupId = null;
     const modal = $('group-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) app.closeModal(modal);
   };
 
   app.openVersionModal = function() {
@@ -526,13 +549,13 @@
     const nextNumber = chart ? (chart.versions || []).length + 1 : 1;
     name.value = `Version ${nextNumber}`;
     notes.value = '';
-    modal.style.display = 'flex';
-    setTimeout(() => name.select(), 0);
+    app.openModal(modal, { initialFocus: name });
+    name.select();
   };
 
   app.closeVersionModal = function() {
     const modal = $('version-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) app.closeModal(modal);
   };
 
   app.openCollectSectionModal = function(sectionId) {
@@ -542,22 +565,36 @@
     const input = $('collect-section-name-input');
     if (!section || !modal || !input) return;
     input.value = app.getSectionDisplayTitle(section);
-    modal.style.display = 'flex';
-    setTimeout(() => input.select(), 0);
+    app.openModal(modal, { initialFocus: input });
+    input.select();
   };
 
   app.closeCollectSectionModal = function() {
     pendingCollectSectionId = null;
     const modal = $('collect-section-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) app.closeModal(modal);
   };
 
   app.bindWorkflowEvents = function() {
     $('btn-editor-view')?.addEventListener('click', () => app.showWorkspace('editor'));
     $('btn-library-view')?.addEventListener('click', () => app.showWorkspace('library'));
 
-    document.querySelectorAll('[data-editor-tab]').forEach(btn => {
+    const editorTabs = Array.from(document.querySelectorAll('[data-editor-tab]'));
+    editorTabs.forEach(btn => {
       btn.addEventListener('click', () => app.showEditorTab(btn.dataset.editorTab));
+      btn.addEventListener('keydown', event => {
+        let nextIndex = null;
+        const currentIndex = editorTabs.indexOf(btn);
+        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % editorTabs.length;
+        if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + editorTabs.length) % editorTabs.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = editorTabs.length - 1;
+        if (nextIndex === null) return;
+        event.preventDefault();
+        const nextTab = editorTabs[nextIndex];
+        app.showEditorTab(nextTab.dataset.editorTab);
+        nextTab.focus();
+      });
     });
 
     $('btn-new-group')?.addEventListener('click', () => app.openGroupModal());
