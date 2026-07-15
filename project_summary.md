@@ -1,32 +1,35 @@
-# Music Chart Creator — Project Summary & Documentation
+# Chart Creator — Project Summary
 
-This document serves as a comprehensive reference guide for the **Music Chart Creator** application. It captures the project scope, technical file structure, core features, precise design rules, resolved engineering challenges, and Tauri desktop release workflow.
+This document records Chart Creator's current architecture, implemented workflows, output rules, and native build model. See [README.md](README.md) for installation and day-to-day development commands, and [production-scale-qa-2026-07-14.md](production-scale-qa-2026-07-14.md) for the production-scale report dated July 14, 2026 and completed July 15.
 
 ---
 
 ## 📁 File Structure
 
-The project lives in `/Users/randymitchell/Desktop/Antigravity/music-sheets` and uses a vanilla HTML/CSS/JS frontend split into small modules, bundled into a Tauri desktop shell.
+The repository uses a vanilla HTML/CSS/JavaScript frontend split into browser modules and bundled into a Tauri desktop shell.
 
 | File / Path | Type | Description |
 |:---|:---|:---|
-| 📄 **[index.html](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/index.html)** | Source Code | Main HTML structure for the three-panel workspace, modals, toolbar, and script loading. |
-| 🎨 **[style.css](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/style.css)** | Source Code | Defines the editor dashboard, light/dark themes, modals, and print-styled chart preview. |
-| ⚙️ **[app.js](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/app.js)** | Source Code | App bootstrap and event binding glue. |
-| 🧩 **[src-js/](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/src-js/)** | Source Code | Feature modules for state, storage, editor rendering, preview rendering, import/export, transposition, undo, and UI helpers. |
-| 📦 **[build.js](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/build.js)** | Build Script | Copies browser assets into `dist/` for Tauri and local browser runs. |
-| 🖨️ **[jspdf.umd.min.js](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/jspdf.umd.min.js)** | Vendored Dependency | Official bundled `jsPDF 4.2.1` UMD build used for PDF export. |
-| 🚀 **[src-tauri/](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/src-tauri/)** | Tauri App | Rust/Tauri shell, configuration, capabilities, icons, and desktop packaging metadata. |
-| 🔐 **[.github/workflows/release.yml](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/.github/workflows/release.yml)** | Release Workflow | Cross-platform release builder with third-party actions pinned to full commit SHAs. |
+| 📄 **[index.html](index.html)** | Source Code | Editor and library workspaces, four editor tabs, dialogs, toolbar, and script order. |
+| 🎨 **[style.css](style.css)** | Source Code | Application themes, responsive layouts, accessible focus states, and print-preview styles. |
+| ⚙️ **[app.js](app.js)** | Source Code | Startup, event binding, shortcuts, undo/redo wiring, and top-level chart actions. |
+| 🧩 **[src-js/](src-js/)** | Source Code | State, storage, workflow, editor, preview, import/export, transpose, undo, and UI modules. |
+| 📦 **[build.js](build.js)** | Build Script | Rebuilds `dist/` from production browser assets. |
+| 🖨️ **[jspdf.umd.min.js](jspdf.umd.min.js)** | Vendored Dependency | Bundled jsPDF 4.2.1 UMD build used for offline PDF export. |
+| 🧪 **[tests/](tests/)** | Test Suite | Node regression, contract, normalization, undo, PDF, and QA-isolation tests. |
+| 🔬 **[qa/](qa/)** / **[script/](script/)** | QA Support | Synthetic native corpus, evidence, and isolated macOS QA build/run helpers. |
+| 🚀 **[src-tauri/](src-tauri/)** | Tauri App | Rust commands, production and QA configurations, capabilities, icons, and packaging metadata. |
+| 🔐 **[.github/workflows/release.yml](.github/workflows/release.yml)** | Release Workflow | Tag-triggered macOS/Windows draft release build with actions pinned to commit SHAs. |
 
 ---
 
 ## 💎 Core Features
 
 ### 1. Three-Panel Dashboard
-* **Sidebar (Left)**: Controls song metadata (Title, Artist, Key, Capo, BPM, Original Key), transpose controls (Up/Down semitones), and a library manager to save/load charts inside local storage.
-* **Sections Editor (Center)**: Drag-and-drop section builder. Each section is a card that can be custom resized or reordered. Lines inside a section can be set as **Chords**, **Lyrics** (with bold toggle), or **Instructions**.
-* **Chart Preview (Right)**: A live WYSIWYG sheet music rendering that mirrors the exact layout, margins, and sizing of the output PDF. Zoom controls adjust scaling using native CSS zoom.
+* **Sidebar (Left)**: Edits chart metadata, transposition, arrangement notes, and a compact saved-chart list.
+* **Editor (Center)**: Provides Sections, Versions, Info, and Collected tabs. Section and line controls support pointer and keyboard reordering.
+* **Chart Preview (Right)**: Renders print-oriented chart output with line fitting, page-break guides, and native CSS zoom.
+* **Library Workspace**: Adds full-card browsing, search, four sort modes, favorites, and group filters outside the three-panel editor.
 
 ### 2. Smart Transposition Engine
 * Transposes entire songs up or down by semitones.
@@ -37,52 +40,58 @@ The project lives in `/Users/randymitchell/Desktop/Antigravity/music-sheets` and
 * Parses raw text chords and lyrics.
 * Automatically detects lines containing chord symbols and formats them as Chord lines.
 * Detects bracketed labels (e.g., `[Chorus]`) and creates distinct sections.
-* Assigns regular lines as Lyrics.
+* Assigns regular lines as lyrics, treats common metadata-like lines as instructions, and merges adjacent chord/lyric pairs into grid lines.
 
 ### 4. Auto-Scale Line Fitting
+* Measures rendered chord, lyric, grid, and instruction lines against the chart-paper width.
+* Shrinks only overflowing lines, with a 60% floor; PDF export applies the same bound through jsPDF measurements.
 
 ### 5. Undo / Redo
-* Full state rollback via  with a 50-entry deep-clone stack.
-*  to undo,  to redo. Toolbar buttons show availability.
+* Full state rollback through `UndoManager` with a 50-entry deep-clone stack.
+* `Cmd/Ctrl+Z` undoes and `Cmd/Ctrl+Shift+Z` redoes; toolbar buttons mirror availability.
 * Text inputs batch edits via focus/blur: typing a chord progression counts as one undo step.
 
 ### 6. Section Templates
-* 6 preset templates (Empty, Verse 4-bar, Chorus 8-bar, Bridge 4-bar, Chords-only, Instrumental 8-bar) from a dropdown next to Add Section.
+* Six presets: Empty, Verse 4-bar, Chorus 8-bar, Bridge 4-bar, Intro/Outro chords-only, and Instrumental 8-bar chords.
 
 ### 7. Line Drag-and-Drop & Search/Replace
 * Drag handles on each line for reordering within and between sections.
-* Inline search & replace bar () with case-sensitive and regex support across all chord, lyric, instruction, and chord + lyric content.
-* Preserves vocal line structure by preventing text wrapping in the chart preview and PDF export.
-* After each render, every chord, lyric, and instruction line is measured against the available paper width.
-* If a line would overflow, its font size is proportionally scaled down so the entire line fits on one row.
-* The minimum scale is clamped at 60% of the original font size to keep text readable.
-* Short lines remain at their full `17.6px` size; only the ones that need it are shrunk.
-* PDF export uses the same sizing logic directly through jsPDF text measurement and drawing, so overflowing lines are scaled consistently without DOM screenshot capture.
+* Inline find/replace supports literal or regular-expression matching, case sensitivity, safe preview highlighting, actual occurrence counts, and one-step Undo.
+
+### 8. Local Library Workflows
+* Saves charts to `localStorage` with deterministic legacy identity normalization and no read-time storage writes.
+* Supports groups, favorites, search/sort, manual versions, collected reusable sections, and private Info fields.
+* Versions are created and restored from the Versions tab; sections are collected from section actions and inserted or deleted from the Collected tab.
+* The desktop app can optionally mirror saved charts into a selected folder using chart-ID-based filenames.
+* Mirror files update on library Save, are not deleted with local-library entries, and contain current chart data rather than versions or collected catalogs.
+* Export JSON contains current chart state, including Info fields; clearing origin data removes local drafts, library records, workflow collections, and settings.
+* Save to Library, Export JSON, and Export PDF are distinct commands.
 
 ---
 
 ## 🎨 Design & Formatting Rules
 
-The preview and PDF export are designed to match the original band PDF charts exactly. Below are the rigid formatting rules that must be maintained:
+The preview and PDF exporter share the following core sizing and color rules; intentional implementation differences are called out explicitly.
 
 ### Typography (Helvetica/Arial)
 * **Font Family**: `'Helvetica Neue', Helvetica, Arial, sans-serif` for all previewed chart elements.
-* **Lyric/Chord Base Font Size**: `17.6px` (regular body).
+* **Lyric Font Size**: `17.6px`; **Chord Font Size**: `16px`; **Instruction Font Size**: `15.5px`.
 * **Bold Lyric Lines**: Must be rendered at the same size as regular lyrics (`17.6px`) but with `font-weight: 700`.
-* **Section Headers**: `19.5px` font size, bold (`700`), and formatted in **ALL CAPS** with no surrounding brackets.
+* **Section Headers**: `17.5px`, bold (`700`), and formatted in **ALL CAPS** with no surrounding brackets.
 
-### Color-Coding System (Physical PDF Values)
-The preview and PDF sheets use a strict set of hex colors:
+### Color-Coding System
+The preview and PDF sheets use the following application palette:
 
 | Element | Hex Color | Notes |
 |:---|:---|:---|
 | **Chords** | `#1a55d4` | Blue, bold text |
-| **Intro / Outro** | `#cc00cc` | Magenta, bold text |
+| **Intro** | `#cc00cc` | Magenta, bold text |
+| **Outro** | `#6b6b6b` | Gray, bold text |
 | **Chorus Label** | `#217a14` | Green, bold text |
 | **Bridge Label** | `#6a1f9a` | Dark Purple, bold text |
 | **Instrumental Label** | `#1a55d4` | Blue, bold text |
 | **Custom Label** | `#9b5c00` | Amber / Brown, bold text |
-| **Instructions** | `#cc00cc` | Magenta, bold text (lines starting with `*` or in italics) |
+| **Instructions** | Preview `#ff12ff`; PDF `#cc00cc` | Magenta; italic in PDF |
 | **Verse Numbers** | See below | Placed in brackets at the beginning of the first line of a verse |
 | └ *Verse 1* | `#cc1800` | Red `[1]` |
 | └ *Verse 2* | `#ff7a00` | Orange `[2]` |
@@ -93,30 +102,29 @@ The preview and PDF sheets use a strict set of hex colors:
 
 ### PDF Margin & Page Layout Rules
 * **Page Size**: Standard Letter size.
-* **Margins**: Narrow and equal top and bottom margins (`24px` effective) to minimize wasted vertical white space and maximize lyrics per page.
+* **Margins**: `40pt` left/right and `24pt` top; the final `20pt` is reserved for the footer.
 * **Footer Page Numbers**: Rendered in the bottom-right corner as `Page X of Y` in small gray text.
-* **Page Budgeting**: When exporting, elements are budget-fitted. The script draws a white block over the page number footer zone to prevent lyrics from overlapping the page numbers.
+* **Page Budgeting**: Sections and lines start a new page before crossing the reserved footer boundary.
 
 ---
 
 ## 🛠️ Resolved Engineering Hurdles
 
 1. **Fixed PDF Export Crash**: Removed runtime CDN loading and bundled jsPDF locally, with guarded library initialization so export errors surface cleanly.
-2. **Fixed Preview Cutoff**: Swapped out CSS `transform: scale()` zooming for native CSS `zoom`. This ensures the scrolling wrapper wrapper correctly calculates its layout dimensions, removing any page-clipping bugs.
+2. **Fixed Preview Cutoff**: Swapped CSS transforms for native CSS `zoom` so the scrolling wrapper calculates its layout dimensions correctly.
 3. **Fixed Sections Pane Scroll & Card Resizing**:
    * Removed `max-height` limits on section editor cards to prevent nested scrolling (mouse wheel traps).
    * Restricted CSS transitions on `.section-card` to skip dimensions, preventing transition lag when dragging the resize handles.
    * Debounced `autoSave()` by `500ms` to stop heavy, blocking localStorage IO calls from interrupting smooth mouse resize gestures.
 4. **Preserved Editor Text Selection**: Fine-tuned CSS drag handles so that dragging reorders cards, but users can still double-click and drag-select text inside the editor text fields without interference.
 5. **Implemented Auto-Scale Line Fitting**: Added a post-render measurement pass that temporarily sets each content line to nowrap, measures scrollWidth against the available paper width, and applies a proportional font-size reduction when the line overflows. The scale floors at 0.6x to preserve legibility, and the original white-space is restored afterward so only overflowing lines are affected.
-6. **Implemented High-Priority Workflow Enhancements**: Undo/redo (`UndoManager` with batched text edits), collapsible sections, section templates (6 presets), duplicate-with-focus flow, line drag-and-drop, and search & replace with regex support. Added 3 new keyboard shortcuts (`Cmd+Z`, `Cmd+Shift+Z`, `Cmd+H`). No localStorage migration needed — all new state keys are additive with falsy defaults.
+6. **Implemented Workflow Enhancements**: Added undo/redo, collapsible and resizable sections, six templates, duplicate-with-focus, pointer/keyboard reordering, find/replace, groups, versions, collected sections, private Info, and the full Library workspace.
 7. **Resolved Code Review Issues (May 2026)**:
    * **Improved Transposition Regex**: Resolved a bug in the transposition regex to support complex jazz and pop chord voicings (e.g. `maj7`, `m7b5`, `7#9`, `sus2`/`sus4`, `dim7`).
    * **ID-Based Storage Indexing**: Migrated stored chart deduplication from title name to a generated unique ID to prevent naming collisions.
    * **Robust Storage Quota Handling**: Caught `QuotaExceededError` in local storage autosaves/library saves, informing the user when storage is full.
-   * **Unicode Validation & UTF-8 Imports**: Passed explicit `UTF-8` encoding parameters to file readers, validated JSON import files for corruption by checking for the replacement char `\uFFFD`, and added `charset=utf-8` on JSON export blobs.
-   * **batched Text Undo/Redo**: Hooked up text-edit batching inside the `UndoManager` using focus/blur event handlers.
-   * **Shift-click Card Selection**: Resolved Shift-click range selections by introducing a range tracking mechanism.
+   * **Unicode Validation & UTF-8 Exports**: Warns when imported text contains the replacement character `\uFFFD` and exports JSON with `charset=utf-8`.
+   * **Batched Text Undo/Redo**: Hooks text-edit batching into `UndoManager` through focus/blur event handlers.
    * **Centralized Modal Styles**: Cleaned up inline CSS for the text import modal and moved layout properties to `style.css`.
    * **PDF Verse Colors**: Aligned the PDF export colors with the CSS stylesheet rules for verses 4 and 5.
 
@@ -131,62 +139,54 @@ The preview and PDF sheets use a strict set of hex colors:
 
 ---
 
-## 🚀 macOS Application Options
+## 🚀 Native Build and QA Modes
 
-We have two options for launching the app on macOS:
-
-### 1. Standalone Native App (Tauri)
-* **App Path**: **[chart-creator.app](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/src-tauri/target/release/bundle/macos/chart-creator.app)**
-* **Installer Path**: **[chart-creator_0.1.0_aarch64.dmg](file:///Users/randymitchell/Desktop/Antigravity/music-sheets/src-tauri/target/release/bundle/dmg/chart-creator_0.1.0_aarch64.dmg)**
-* **Behavior**: Runs completely standalone as a native desktop client with all assets compiled inside the app. It does not require any external terminal commands or local Python server processes.
-* **Commands**: Run `npx tauri dev` to run in development mode or `npx tauri build` to recompile.
-
-### 2. Browser Desktop Helper (Python Web Server Launcher)
-* **App Link**: **[Chart Creator.app](file:///Users/randymitchell/Desktop/Chart%20Creator.app)**
-* **Launcher Behavior**:
-  1. Checks if a process is listening on port `8080` (e.g. `lsof -i :8080`).
-  2. If none is found, it changes directory to the workspace and starts the Python server (`python3 -m http.server 8080 &`). To ensure python3 resolves correctly when launched from Finder (which does not inherit login shell PATHs), the script constructs a robust PATH environment including Homebrew paths `/opt/homebrew/bin` and `/usr/local/bin`.
-  3. Opens the local server URL (`http://localhost:8080`) in the default web browser.
-  4. Immediately exits the launching applet to keep your macOS Dock tidy.
-* **Custom Icon**: Bundled with a custom macOS squircle icon showing a neon guitar crossed with a creative writing pen. Finder caches are bypassed using app bundle renaming triggers to force Finder updates.
+* **Production**: `tauri.conf.json` builds browser assets into `dist/`, uses bundle ID `com.chartcreator.music`, and packages into `src-tauri/target/release/bundle/`.
+* **Isolated QA (macOS)**: `tauri.qa.conf.json` builds into `dist-qa/` and `src-tauri/target/qa-approval-b/`, uses bundle ID `com.chartcreator.music.qa`, and seeds only that QA origin.
+* **QA runner**: `./script/build_and_run.sh --verify` builds and launches the QA app; `--reset` clears only the hard-gated QA WebKit store before launch.
+* **Release workflow**: Tags matching `v*` create draft macOS Intel, macOS Apple Silicon, and Windows releases.
 
 ---
 
-## 🧠 Future Roadmap & Extensibility
+## ✅ Implemented Workflows
 
-## ✅ Implemented (May 2026)
-
-All 7 High-Priority Workflow Enhancements and 7 Tier 2 UX & Design Polish features from the roadmap:
+The current application includes the following editor, output, library, and accessibility workflows:
 
 | Feature | Implementation |
 |:---|:---|
 | **Undo / Redo** | `UndoManager` class with 50-entry stack, `Cmd+Z` / `Cmd+Shift+Z`, toolbar buttons, text-edit batching on focus/blur |
 | **Collapsible Sections** | Chevron toggle in section header, collapses card body, `section.collapsed` persisted |
-| **Section Templates** | `<select>` dropdown near Add Section with 6 presets (Empty, Verse 4-bar, Chorus 8-bar, Bridge 4-bar, Chords-only, Instrumental 8-bar) |
+| **Section Templates** | `<select>` dropdown near Add Section with six presets (Empty, Verse 4-bar, Chorus 8-bar, Bridge 4-bar, Intro/Outro chords-only, Instrumental 8-bar) |
 | **Duplicate + Edit Flow** | Duplicated sections flash highlight, auto-increment verse numbers, scroll + focus first input |
 | **Line Drag-and-Drop** | Drag handles on each line, within-section and cross-section reordering via HTML5 drag API |
-| **Search & Replace** | Inline bar (`Cmd+H`) with case-sensitive and regex toggles, chord-aware replacement across all sections |
+| **Search & Replace** | Inline bar (`Cmd/Ctrl+F` or `Cmd/Ctrl+H`) with case-sensitive and regex toggles across all line content |
 | **Page Break Indicators** | Zoom-independent visual break lines overlaid in preview at 792pt equivalents (Letter page height) |
 | **Shortcut Cheat Sheet** | Keyboard shortcut helper modal toggled via toolbar button or `?` hotkey |
 | **Time Signature Selector** | `Time Sig` metadata field in sidebar, displaying in the preview/PDF next to BPM (hidden when unset) |
 | **Arrangement Notes Field** | Free-text notes area in sidebar rendered under metadata with text-wrapping on preview/PDF |
-| **Dark Mode Preview Toggle** | Clean preview invert mode via `.chart-paper.dark-mode` selector |
-| **Improved Saved Charts** | Advanced library list with search filtering, alpha/key/date sorting, pinning favorites, and unique ID legacy migration |
-| **Delete Recovery Toast** | Confirms permanent library deletions, while single section deletes trigger an Undo Toast notification |
+| **Persistent Theme** | Stores light/dark application theme in settings while chart paper remains print-oriented |
+| **Improved Saved Charts** | Compact and full library views with search, four sorts, favorites, groups, and stable legacy identities |
+| **Versions and Collected Sections** | Manual chart snapshots plus reusable section copies with regenerated IDs on insert |
+| **Private Info** | Group, status, source, and info notes persist without entering preview/PDF output |
+| **Destructive Actions** | Library and collected-item deletions confirm; section changes remain available to chart Undo |
+| **Offline PDF Export** | Bundled jsPDF export with no runtime CDN dependency |
 
-### New Keyboard Shortcuts
+### Keyboard Shortcuts
 
 | Shortcut | Action |
 |:---|:---|
-| `Cmd+Z` | Undo |
-| `Cmd+Shift+Z` | Redo |
-| `Cmd+H` | Open search & replace |
-| `Cmd+S` | Save (existing) |
-| `Cmd+E` | Export PDF (existing) |
+| `Cmd/Ctrl+Z` | Undo |
+| `Cmd/Ctrl+Shift+Z` | Redo |
+| `Cmd/Ctrl+H` | Open search & replace |
+| `Cmd/Ctrl+F` | Open find |
+| `Cmd/Ctrl+S` | Save to library |
+| `Cmd/Ctrl+E` | Export PDF |
 | `?` | Open keyboard shortcuts cheat sheet |
 
-### 🔮 Advanced Extensibility
-* **Setlist Mode**: Group, reorder, and export combined multi-song PDFs.
+## 🔮 Future Roadmap & Extensibility
+
+The following items are ideas, not committed delivery plans:
+* **Combined Setlist Export**: Reorder grouped songs and export a multi-song PDF.
 * **Nashville Number System**: Convert chords dynamically relative to the key.
 * **Chord Diagram Popovers**: Guitar/ukulele fingerings on hovering chords.
 * **Live Sync**: Multi-user real-time editing and shareable view links.
@@ -197,7 +197,5 @@ All 7 High-Priority Workflow Enhancements and 7 Tier 2 UX & Design Polish featur
 * **Onboarding Walkthrough**: Step-by-step tour for first-time users.
 * **Status Bar Counters**: Line counts, page estimations, and zoom indicators.
 * **Section Minimap**: Color-coded structural navigator strip.
-* **Offline Support**: The PDF dependency is bundled locally; full offline PDF export works without a network connection.
-
 * **Per-Line Font Size Override**: Allow manual adjustment of individual line font sizes in the editor, overriding the auto-scale behavior for lines that need specific sizing.
-* **Chord-Lyric Alignment**: Improve chord-over-lyric alignment so chord tokens sit directly above their corresponding syllables, matching standard chord-chart formatting.
+* **Per-Syllable Chord Alignment**: Position individual chord tokens above corresponding lyric syllables instead of using the current row-based grid.
