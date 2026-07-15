@@ -140,7 +140,7 @@
     try {
       const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
       if (!jsPDFClass) {
-        app.showToast('PDF library (jsPDF) is not loaded. Please check your internet connection.', 'error');
+        app.showToast('Bundled PDF library (jsPDF) is not available. Please reinstall or rebuild the app.', 'error');
         return;
       }
 

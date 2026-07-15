@@ -2,16 +2,16 @@
 
 # Chart Creator
 
-Create professional music charts with color-coded chords, lyrics, and sections. Export to PDF. Great for dialing in new tracks with your band and even writing new songs! Built with vanilla HTML/CSS/JS in a Tauri desktop shell.
+Create color-coded music charts, organize them in a local library, and export them as JSON or print-ready PDFs. Chart Creator uses vanilla HTML, CSS, and JavaScript inside a Tauri desktop shell.
 
 ## Installation
 
-To download the application, look at the right sidebar of this GitHub page and click on the latest version under the **Releases** section.
+Download the latest installer from [GitHub Releases](https://github.com/agentrm25/music-sheets/releases).
 
 ### macOS
 
 1. Check your Mac's chip: Click the Apple icon () in the top-left corner of your screen and select **About This Mac**. Look at **Processor** or **Chip**.
-2. Go to the **Releases** page and download the `.dmg` file matching your Mac:
+2. From the release assets, download the `.dmg` file matching your Mac:
    - **Apple Silicon (M1, M2, M3, M4, etc.)**: Download the file ending in `_aarch64.dmg`.
    - **Intel Processor**: Download the file ending in `_x64.dmg`.
 3. Open the downloaded `.dmg` file and drag the **Chart Creator** icon into your **Applications** folder.
@@ -22,37 +22,39 @@ To download the application, look at the right sidebar of this GitHub page and c
 
 ### Windows
 
-1. Go to the **Releases** page and download either:
-   - **Standard Installer (`.msi`)**: Choose this to install the app permanently on your system.
-   - **Portable App (`.exe`)**: Choose this to run the app directly without installing anything.
+1. From the release assets, download the Windows `.msi` or setup `.exe` installer.
 2. Double-click the downloaded file.
 3. **First-time Launch Setup (Windows SmartScreen warning)**:
    - Since the app is unsigned, Windows may show a blue box saying *"Windows protected your PC"*.
    - Click **More info** (under the text), then click **Run anyway**.
 
-## Visual Walkthrough
-
-![Chart Creator Workspace Interface](walkthrough.png)
+## Interface
 
 The three-panel workspace provides an intuitive chart-building experience:
 
-1. **Song Details (Left Panel)**: Configure metadata, transpose key, specify capo settings, and add bracket-wrapped arrangement notes.
-2. **Sections Editor (Center Panel)**: Structure arrangement with templates, repeat counts, and drag-and-drop elements. Choose from line types: *Chord*, *Lyric*, *Chord + Lyric*, or *Instruction*.
-3. **Live Preview (Right Panel)**: View a real-time, print-ready preview with auto-scaled overflowing lines and page-break guides.
+1. **Song Details (left)**: Edit title, artist, key, original key, BPM, time signature, capo, arrangement notes, and the compact saved-chart list.
+2. **Editor (center)**: Build sections and lines, or switch among the Sections, Versions, Info, and Collected tabs.
+3. **Live Preview (right)**: Review print output with automatic line fitting, zoom controls, and page-break guides.
+
+Use the toolbar workspace switch to move between the three-panel editor and the full library view.
 
 ## Features
 
 - **Three-panel workspace** — sidebar for metadata, center for the section editor, right for live preview
 - **Smart transposition** — transpose entire charts by semitones with automatic sharp/flat spelling and complex chord support (slash chords, extensions, sus, dim, aug)
-- **Section editor** — drag-and-drop sections and lines, custom resize, collapsible cards, 6 preset templates (Verse, Chorus, Bridge, Intro, Instrumental, Empty), and an inline repeat control for non-verse sections
-- **Color-coded output** — sections and chords use distinct colors matched to standard conventions with fine-tuned font sizing per element type (chords, lyrics, instructions, headers)
-- **PDF export** — page-budgeted letter-size output with auto-scaling lines, page numbers, bracket-wrapped arrangement notes, and WYSIWYG fidelity to the preview
+- **Section editor** — drag-and-drop sections and lines, custom resize, collapsible cards, six presets (Empty, Verse, Chorus, Bridge, Intro/Outro, Instrumental), and repeat controls for non-verse sections
+- **Color-coded output** — section types and chords use a consistent application palette with tuned sizes for chords, lyrics, instructions, and headers
+- **PDF export** — page-budgeted Letter output with line fitting, page numbers, bracket-wrapped arrangement notes, and the same core sizing rules as the preview
 - **Search and replace** — inline bar with regex and case-sensitive support across all chord, lyric, instruction, and chord + lyric content
 - **Text import** — paste raw chart text and let the parser detect chord lines, section labels, and lyrics
-- **Library manager** — save charts to local storage with search, sort, and favorites
+- **Library manager** — search, sort, favorite, group, load, and delete charts stored in `localStorage`
+- **Versions and collected sections** — save chart snapshots and reuse copied sections with fresh IDs
+- **Private workflow info** — track group, status, source, and private notes that stay out of preview and PDF output
+- **Desktop folder mirror** — optionally mirror saved charts as ID-stable JSON files from the Tauri app
+- **JSON import/export** — open validated chart JSON and export current chart state separately from library Save
 - **Undo/redo** — 50-entry stack with batched text-editing so typing feels natural
-- **Light/Dark themes** — toggle the app interface between dark and light modes while keeping the chart paper pristine for printing
-- **Keyboard-driven** — `Cmd+Z` undo, `Cmd+Shift+Z` redo, `Cmd+H` find & replace, `?` shortcut cheat sheet
+- **Persistent light/dark themes** — toggle the application theme while keeping chart output print-ready
+- **Keyboard and accessibility support** — semantic dialogs and tabs, focus trapping, keyboard reordering, and documented shortcuts
 
 ## Quick Start
 
@@ -60,15 +62,15 @@ The three-panel workspace provides an intuitive chart-building experience:
 
 - [Node.js](https://nodejs.org) (for the dev server)
 - [Rust](https://rustup.rs) (for the Tauri desktop build)
-- macOS, Windows, or Linux
+- macOS or Windows for packaged desktop releases; browser mode works anywhere Node.js can run
 
 ### Run in a Browser (no Rust needed)
 
 ```bash
-git clone https://github.com/your-username/chart-creator.git
-cd chart-creator
+git clone https://github.com/agentrm25/music-sheets.git
+cd music-sheets
 node build.js
-npx http-server dist -p 1420
+npx --yes http-server@14.1.1 dist -p 1420
 ```
 
 Open [http://localhost:1420](http://localhost:1420).
@@ -76,19 +78,37 @@ Open [http://localhost:1420](http://localhost:1420).
 ### Run as a Desktop App
 
 ```bash
-git clone https://github.com/your-username/chart-creator.git
-cd chart-creator
-npm install -g @tauri-apps/cli
-npx tauri dev
+git clone https://github.com/agentrm25/music-sheets.git
+cd music-sheets
+npm exec --yes --package=@tauri-apps/cli@2.11.4 -- tauri dev
 ```
 
 ## Build
 
 ```bash
-npx tauri build
+npm exec --yes --package=@tauri-apps/cli@2.11.4 -- tauri build
 ```
 
 The packaged app lands in `src-tauri/target/release/bundle/`.
+
+Linux is supported for browser development, but the tag-triggered release workflow currently publishes only macOS and Windows installers.
+
+## Data and File Behavior
+
+- The current draft, library, groups, collected sections, versions, and settings live in origin-specific `localStorage`. Clearing browser/app site data removes them.
+- **Save to Library** updates the local library. In the desktop app, it also writes the current chart to the selected mirror folder when one is configured.
+- **Export JSON** writes only the current chart state, including Info fields; library versions and the collected-section catalog are not included.
+- Mirror files use chart-ID-based names, update on library Save, and are not removed when a chart is deleted from the local library.
+- Folder-write failures do not undo a successful local-library Save; the app reports the mirror failure separately.
+
+## Validation
+
+```bash
+node --test --test-concurrency=1 tests/*.test.js
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+On macOS, `./script/build_and_run.sh --verify` builds and launches an isolated QA app with bundle ID `com.chartcreator.music.qa`. Its generated frontend, Rust target, and WebKit data are separate from production. Use `--reset` only when you intentionally want to clear that QA-only WebKit store and reseed the synthetic corpus.
 
 ## Tech Stack
 
@@ -118,20 +138,25 @@ The packaged app lands in `src-tauri/target/release/bundle/`.
 │   ├── import-export.js    # JSON and PDF export, text import parser
 │   ├── transpose.js        # Chord transposition engine
 │   ├── undo.js             # UndoManager with text-edit batching
-│   └── ui.js               # Toasts, confirm dialogs, status bar, search
+│   ├── ui.js               # Dialogs, toasts, status, find/replace
+│   └── workflow.js         # Full library, groups, versions, info, collected sections
+├── qa/                      # Synthetic data and native QA evidence
+├── script/                  # Isolated QA build/run helpers
+├── tests/                   # Node regression and contract tests
 ├── jspdf.umd.min.js        # Bundled PDF library
 ├── src-tauri/              # Tauri backend (Rust)
 │   ├── Cargo.toml          # Rust dependencies
 │   ├── capabilities/       # Tauri runtime permissions
 │   ├── tauri.conf.json     # CSP, window config, build commands
+│   ├── tauri.qa.conf.json  # Isolated native QA bundle/configuration
 │   └── src/lib.rs          # Tauri app setup
 └── icon.png                # App icon
 ```
 
 ## Security
 
-The PDF dependency is bundled locally. The Content Security Policy restricts scripts to `'self'` only, and release workflow actions are pinned to immutable commit SHAs.
+The PDF dependency is bundled locally. The Content Security Policy restricts scripts to `'self'`, saved charts remain local unless a desktop mirror folder is selected, and release workflow actions are pinned to immutable commit SHAs.
 
 ## License
 
-MIT
+This repository does not currently include a license file.
