@@ -641,12 +641,6 @@ body {
   gap: var(--space-sm);
 }
 
-.editor-toolbar-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
 .editor-tabs {
   display: inline-flex;
   gap: var(--space-xs);
@@ -2022,32 +2016,6 @@ body.section-reorder-active {
 }
 
 /* ========================================================================
-   TEMPLATE DROPDOWN
-   ======================================================================== */
-
-.toolbar-dropdown-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
-.dropdown-arrow {
-  font-size: 9px;
-  margin-left: 2px;
-  opacity: 0.6;
-}
-
-#template-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 170px;
-}
-
-#template-menu .dropdown-item {
-  font-size: 12px;
-}
-
-/* ========================================================================
    COLLAPSIBLE SECTIONS
    ======================================================================== */
 
@@ -2485,17 +2453,6 @@ body.section-reorder-active {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.toast-action-btn {
-  background: none;
-  border: none;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  margin-left: 12px;
-  font-weight: bold;
-  font-size: 12px;
 }
 
 button:focus-visible,
