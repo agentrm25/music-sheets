@@ -85,7 +85,9 @@ class FakeElement {
     this.listeners = new Map();
     this.attributes = new Map();
     this.dataset = {};
-    this.style = {};
+    this.style = {
+      setProperty(name, value) { this[name] = value; }
+    };
     this.value = '';
     this.checked = false;
     this.disabled = false;
@@ -999,6 +1001,25 @@ test('B01 Original Key hydrates and its input updates state and autosave', () =>
   }
 });
 
+test('B01 entering a key leaves Original Key empty until Transpose is used', () => {
+  const { environment } = bootApplication();
+  try {
+    environment.app.state.originalKey = '';
+    const originalKey = environment.document.getElementById('input-original-key');
+    const key = environment.document.getElementById('input-key');
+    originalKey.value = '';
+    key.value = 'C';
+
+    key.dispatchEvent(makeEvent('input'));
+    assert.equal(environment.app.state.originalKey, '');
+
+    environment.document.getElementById('btn-transpose-up').click();
+    assert.equal(environment.app.state.originalKey, 'C');
+  } finally {
+    environment.restore();
+  }
+});
+
 test('B02 BPM commits a clamped numeric value on blur and change', () => {
   const { environment, calls } = bootApplication();
   try {
@@ -1366,6 +1387,23 @@ test('B03 regex highlighting preserves backreferences across multiple text nodes
   }
 });
 
+test('inline bold markers remain bold on an automatically bold verse line', () => {
+  const document = new FakeDocument();
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/preview.js');
+    const parent = document.createElement('div');
+
+    environment.app.renderInlineBold(parent, 'First **important** line', true);
+
+    const spans = parent.querySelectorAll('span');
+    assert.equal(spans.length, 3);
+    assert.equal(spans.every(span => span.style.fontWeight === '700'), true);
+  } finally {
+    environment.restore();
+  }
+});
+
 test('B15 editor line and section controls expose keyboard controls and bounded inputs', () => {
   const document = new FakeDocument();
   const environment = installEnvironment({ document });
@@ -1386,10 +1424,21 @@ test('B15 editor line and section controls expose keyboard controls and bounded 
 
     const verseCard = environment.app.buildSectionCard(environment.app.state.sections[0], 0);
     const verseNumber = verseCard.querySelector('.verse-number-input');
+    let selections = 0;
+    verseNumber.select = () => { selections += 1; };
+    verseNumber.click();
+    assert.equal(selections, 1);
+    assert.equal(verseNumber.type, 'text');
     verseNumber.value = '100';
     verseNumber.dispatchEvent(makeEvent('change'));
     assert.equal(environment.app.state.sections[0].verseNumber, 99);
     assert.equal(verseNumber.value, '99');
+
+    const fontScale = verseCard.querySelector('.section-font-scale-select');
+    assert.equal(fontScale.querySelectorAll('option').length, 11);
+    fontScale.value = '150';
+    fontScale.dispatchEvent(makeEvent('change'));
+    assert.equal(environment.app.state.sections[0].fontScale, 150);
 
     const collapse = verseCard.querySelector('.section-collapse-toggle');
     assert.equal(collapse.getAttribute('aria-expanded'), 'true');
@@ -1409,6 +1458,15 @@ test('B15 editor line and section controls expose keyboard controls and bounded 
     assert.match(lineDrag.getAttribute('aria-keyshortcuts'), /ArrowDown/);
     lineItem.querySelectorAll('.line-input').forEach(input => assert.ok(input.getAttribute('aria-label')));
     lineItem.querySelectorAll('.line-action-btn').forEach(button => assert.ok(button.getAttribute('aria-label')));
+
+    const blankItem = environment.app.buildLineItem(
+      environment.app.state.sections[0],
+      environment.app.createLine('blank'),
+      0,
+      1
+    );
+    assert.equal(blankItem.querySelector('.blank-line-editor').textContent, 'Blank line');
+    assert.equal(blankItem.querySelector('.line-input'), null);
 
     const gridLine = environment.app.createLine('grid', 'Words');
     gridLine.chords = 'C G';
@@ -1600,7 +1658,7 @@ test('B15 section drag handle provides a keyboard reorder path', () => {
     environment.app.state = environment.app.normalizeState({
       sections: [
         { id: 'first', type: 'verse', verseNumber: 1, lines: [] },
-        { id: 'second', type: 'chorus', lines: [] }
+        { id: 'second', type: 'verse', verseNumber: 2, lines: [] }
       ]
     });
     environment.app.pushUndo = () => {};
@@ -1623,9 +1681,50 @@ test('B15 section drag handle provides a keyboard reorder path', () => {
 
     assert.equal(event.defaultPrevented, true);
     assert.deepEqual(environment.app.state.sections.map(section => section.id), ['second', 'first']);
+    assert.deepEqual(environment.app.state.sections.map(section => section.verseNumber), [1, 2]);
     assert.match(handle.getAttribute('aria-keyshortcuts'), /ArrowDown/);
     const movedCard = document.querySelectorAll('.section-card').find(item => item.dataset.sectionId === 'first');
     assert.equal(document.activeElement === movedCard.querySelector('.section-drag-handle'), true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('section pointer dragging accepts the space between section cards as a drop target', () => {
+  const document = new FakeDocument();
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/state.js');
+    environment.app.state = environment.app.normalizeState({
+      sections: [
+        { id: 'first', type: 'verse', verseNumber: 1, lines: [] },
+        { id: 'second', type: 'verse', verseNumber: 2, lines: [] },
+        { id: 'third', type: 'verse', verseNumber: 3, lines: [] }
+      ]
+    });
+    environment.app.pushUndo = () => {};
+    environment.app.commitChange = () => {};
+    environment.app.autoSave = () => {};
+    environment.app.updateStatusBar = () => {};
+    freshRequire('src-js/editor.js');
+
+    environment.app.state.sections.forEach((section, index) => {
+      const card = environment.app.buildSectionCard(section, index);
+      card.getBoundingClientRect = () => ({ top: index * 150, left: 0, width: 500, height: 100 });
+      document.body.appendChild(card);
+    });
+
+    const firstCard = document.querySelectorAll('.section-card').find(card => card.dataset.sectionId === 'first');
+    const handle = firstCard.querySelector('.section-drag-handle');
+    handle.dispatchEvent(makeEvent('pointerdown', {
+      pointerType: 'mouse', button: 0, pointerId: 1, clientX: 10, clientY: 20
+    }));
+    document.dispatchEvent(makeEvent('pointermove', { clientX: 10, clientY: 275 }));
+    document.dispatchEvent(makeEvent('pointerup', { clientX: 10, clientY: 275 }));
+
+    assert.deepEqual(environment.app.state.sections.map(section => section.id), ['second', 'first', 'third']);
+    assert.deepEqual(environment.app.state.sections.map(section => section.verseNumber), [1, 2, 3]);
   } finally {
     environment.restore();
   }
@@ -1667,6 +1766,92 @@ test('B15 line drag handle moves a boundary line across sections and restores fo
     const movedHandle = document.querySelectorAll('.line-drag-handle')
       .find(item => item.dataset.lineId === 'moving');
     assert.equal(document.activeElement === movedHandle, true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('line pointer dragging reorders lines within a section', () => {
+  const document = new FakeDocument();
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/state.js');
+    environment.app.state = environment.app.normalizeState({
+      sections: [{
+        id: 'section',
+        type: 'chorus',
+        lines: [
+          { id: 'a', type: 'lyric', content: 'A' },
+          { id: 'b', type: 'lyric', content: 'B' },
+          { id: 'c', type: 'lyric', content: 'C' }
+        ]
+      }]
+    });
+    environment.app.pushUndo = () => {};
+    environment.app.commitChange = () => {};
+    environment.app.autoSave = () => {};
+    environment.app.updateStatusBar = () => {};
+    freshRequire('src-js/editor.js');
+
+    const card = environment.app.buildSectionCard(environment.app.state.sections[0], 0);
+    card.getBoundingClientRect = () => ({ top: 0, left: 0, width: 500, height: 200 });
+    card.querySelectorAll('.line-item').forEach((item, index) => {
+      item.getBoundingClientRect = () => ({ top: 20 + index * 40, left: 0, width: 500, height: 20 });
+    });
+    document.body.appendChild(card);
+
+    const handle = card.querySelectorAll('.line-drag-handle').find(item => item.dataset.lineId === 'a');
+    handle.dispatchEvent(makeEvent('pointerdown', {
+      pointerType: 'mouse', button: 0, pointerId: 1, clientX: 10, clientY: 25
+    }));
+    document.dispatchEvent(makeEvent('pointermove', { clientX: 10, clientY: 150 }));
+    document.dispatchEvent(makeEvent('pointerup', { clientX: 10, clientY: 150 }));
+
+    assert.deepEqual(environment.app.state.sections[0].lines.map(line => line.id), ['b', 'c', 'a']);
+    assert.equal(handle.draggable, undefined);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('pressing Enter focuses the exact lyric line it creates', () => {
+  const document = new FakeDocument();
+  const environment = installEnvironment({ document });
+  try {
+    global.setTimeout = callback => { callback(); return 1; };
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/state.js');
+    environment.app.state = environment.app.normalizeState({
+      sections: [{
+        id: 'outro',
+        type: 'outro',
+        lines: [
+          { id: 'chord', type: 'chord', content: 'C' },
+          { id: 'lyric', type: 'lyric', content: 'Ending' }
+        ]
+      }]
+    });
+    environment.app.pushUndo = () => {};
+    environment.app.snapshotTextEdit = () => {};
+    environment.app.commitTextEdit = () => {};
+    environment.app.autoSave = () => {};
+    environment.app.updateStatusBar = () => {};
+    freshRequire('src-js/editor.js');
+    environment.app.commitChange = () => {
+      document.querySelectorAll('.section-card').forEach(card => card.remove());
+      environment.app.state.sections.forEach((section, index) => {
+        document.body.appendChild(environment.app.buildSectionCard(section, index));
+      });
+    };
+    environment.app.commitChange();
+
+    const lyricInput = document.querySelector('.line-input[data-line-id="lyric"]');
+    lyricInput.dispatchEvent(makeEvent('keydown', { key: 'Enter' }));
+
+    const newLine = environment.app.state.sections[0].lines[2];
+    assert.equal(newLine.type, 'lyric');
+    assert.equal(document.activeElement.dataset.lineId, newLine.id);
   } finally {
     environment.restore();
   }

@@ -33,7 +33,7 @@
       if (seg.text === '') return;
       const span = document.createElement('span');
       span.textContent = seg.text;
-      const isBold = baseBold ? !seg.bold : seg.bold;
+      const isBold = baseBold || seg.bold;
       span.style.fontWeight = isBold ? '700' : '400';
       parentEl.appendChild(span);
     });
@@ -150,6 +150,12 @@
 
       const sectionEl = document.createElement('div');
       sectionEl.className = 'chart-section';
+      const fontScale = app.normalizeSectionFontScale(section.fontScale) / 100;
+      sectionEl.style.setProperty('--section-label-size', `${17.5 * fontScale}px`);
+      sectionEl.style.setProperty('--section-chord-size', `${16 * fontScale}px`);
+      sectionEl.style.setProperty('--section-lyric-size', `${17.6 * fontScale}px`);
+      sectionEl.style.setProperty('--section-line-height', `${17.6 * fontScale * 1.35}px`);
+      sectionEl.style.setProperty('--section-instruction-size', `${15.5 * fontScale}px`);
 
       const meta = app.SECTION_META[section.type] || app.SECTION_META.custom;
       let headerText = meta.label;
@@ -168,6 +174,13 @@
 
       let firstLyricInVerse = true;
       section.lines.forEach(line => {
+        if (line.type === 'blank') {
+          const blankEl = document.createElement('div');
+          blankEl.className = 'chart-blank-line';
+          blankEl.setAttribute('aria-hidden', 'true');
+          sectionEl.appendChild(blankEl);
+          return;
+        }
         if (!line.content && !(line.type === 'chord' || (line.type === 'grid' && line.chords))) return;
 
         if (line.type === 'chord') {

@@ -37,6 +37,10 @@
     return app.normalizeIntegerInRange(value, 1, 99);
   };
 
+  app.normalizeSectionFontScale = function(value) {
+    return app.normalizeIntegerInRange(value, 100, 200) || 100;
+  };
+
   app.getNextVerseNumber = function(sections) {
     if (!sections) return 1;
     const verseNums = sections
@@ -46,6 +50,15 @@
     return verseNums.length > 0
       ? app.normalizeVerseNumber(Math.max(...verseNums) + 1)
       : 1;
+  };
+
+  app.renumberVerses = function(sections) {
+    let verseNumber = 1;
+    (sections || []).forEach(section => {
+      if (!section || section.type !== 'verse') return;
+      section.verseNumber = Math.min(verseNumber, 99);
+      verseNumber++;
+    });
   };
 
   app.createEmptyChart = function() {
@@ -75,6 +88,7 @@
       collapsed: false,
       repeat: null,
       customLabel: '',
+      fontScale: 100,
       editorHeight: '',
       lines: []
     };
@@ -119,6 +133,7 @@
           collapsed: !!section.collapsed,
           repeat: app.normalizeRepeat(section.repeat),
           customLabel: section.customLabel || '',
+          fontScale: app.normalizeSectionFontScale(section.fontScale),
           editorHeight: typeof section.editorHeight === 'string' && /^\d+(?:\.\d+)?px$/.test(section.editorHeight)
             ? section.editorHeight
             : '',

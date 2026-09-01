@@ -207,7 +207,7 @@
         let totalWidth = 0;
         segments.forEach(seg => {
           if (seg.text === '') return;
-          const isBold = baseBold ? !seg.bold : seg.bold;
+          const isBold = baseBold || seg.bold;
           pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
           totalWidth += pdf.getTextWidth(seg.text);
         });
@@ -219,7 +219,7 @@
 
         segments.forEach(seg => {
           if (seg.text === '') return;
-          const isBold = baseBold ? !seg.bold : seg.bold;
+          const isBold = baseBold || seg.bold;
           pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
           pdf.text(seg.text, curX, curY);
           curX += pdf.getTextWidth(seg.text);
@@ -328,35 +328,42 @@
       }
 
       app.state.sections.forEach(section => {
+        const fontScale = app.normalizeSectionFontScale(section.fontScale) / 100;
+        const scaledLyricFontSize = lyricFontSize * fontScale;
+        const scaledChordFontSize = chordFontSize * fontScale;
+        const scaledInstructionFontSize = instructionFontSize * fontScale;
+        const scaledSectionHeaderFontSize = sectionHeaderFontSize * fontScale;
         const meta = app.SECTION_META[section.type] || app.SECTION_META.custom;
         let headerText = meta.label;
         if (section.type === 'custom') headerText = (section.customLabel || 'SECTION').toUpperCase();
         if (section.repeat && section.type !== 'verse') headerText += ` × ${section.repeat}`;
         let headerColor = meta.color;
 
-        const firstRenderedLine = section.lines.find(l => l.content || l.type === 'chord' || (l.type === 'grid' && l.chords));
+        const firstRenderedLine = section.lines.find(l => l.type === 'blank' || l.content || l.type === 'chord' || (l.type === 'grid' && l.chords));
         let firstLineHeight = 0;
         if (firstRenderedLine) {
           const info = app.getLyricRenderInfo(firstRenderedLine, section, true);
-          if (firstRenderedLine.type === 'chord') {
-            firstLineHeight = getScaledFontSize(firstRenderedLine.content, chordFontSize) * lineHeightMultiplier;
+          if (firstRenderedLine.type === 'blank') {
+            firstLineHeight = scaledLyricFontSize * lineHeightMultiplier;
+          } else if (firstRenderedLine.type === 'chord') {
+            firstLineHeight = getScaledFontSize(firstRenderedLine.content, scaledChordFontSize) * lineHeightMultiplier;
           } else if (firstRenderedLine.type === 'lyric') {
-            firstLineHeight = getScaledFontSize(info.fullText, lyricFontSize) * lineHeightMultiplier;
+            firstLineHeight = getScaledFontSize(info.fullText, scaledLyricFontSize) * lineHeightMultiplier;
           } else if (firstRenderedLine.type === 'instruction') {
-            firstLineHeight = getScaledFontSize(firstRenderedLine.content, instructionFontSize) * lineHeightMultiplier;
+            firstLineHeight = getScaledFontSize(firstRenderedLine.content, scaledInstructionFontSize) * lineHeightMultiplier;
           } else if (firstRenderedLine.type === 'grid') {
             let h = 0;
-            if (firstRenderedLine.chords) h += getScaledFontSize(firstRenderedLine.chords, chordFontSize) * lineHeightMultiplier;
-            if (firstRenderedLine.content) h += getScaledFontSize(info.fullText, lyricFontSize) * lineHeightMultiplier;
+            if (firstRenderedLine.chords) h += getScaledFontSize(firstRenderedLine.chords, scaledChordFontSize) * lineHeightMultiplier;
+            if (firstRenderedLine.content) h += getScaledFontSize(info.fullText, scaledLyricFontSize) * lineHeightMultiplier;
             firstLineHeight = h;
           }
         } else {
-          firstLineHeight = lyricFontSize * lineHeightMultiplier;
+          firstLineHeight = scaledLyricFontSize * lineHeightMultiplier;
         }
 
-        const headerSize = getScaledFontSize(headerText || 'SECTION', sectionHeaderFontSize);
+        const headerSize = getScaledFontSize(headerText || 'SECTION', scaledSectionHeaderFontSize);
         const headerHeight = headerText ? (headerSize * lineHeightMultiplier) : 0;
-        const spacerHeight = lyricFontSize * 1.0;
+        const spacerHeight = scaledLyricFontSize * 1.0;
 
         if (y + spacerHeight + headerHeight + firstLineHeight > usableHeight) {
           pdf.addPage();
@@ -375,10 +382,16 @@
 
         let firstLyricInVerse = true;
         section.lines.forEach(line => {
+          if (line.type === 'blank') {
+            const height = scaledLyricFontSize * lineHeightMultiplier;
+            checkPageBreak(height);
+            y += height;
+            return;
+          }
           if (!line.content && !(line.type === 'chord' || (line.type === 'grid' && line.chords))) return;
 
           if (line.type === 'chord') {
-            const size = getScaledFontSize(line.content, chordFontSize);
+            const size = getScaledFontSize(line.content, scaledChordFontSize);
             const height = size * lineHeightMultiplier;
             checkPageBreak(height);
             pdf.setFont('helvetica', 'bold');
@@ -390,7 +403,7 @@
             const info = app.getLyricRenderInfo(line, section, firstLyricInVerse);
             if (info.isVerseFirst) firstLyricInVerse = false;
 
-            const size = getScaledFontSize(info.fullText, lyricFontSize);
+            const size = getScaledFontSize(info.fullText, scaledLyricFontSize);
             const height = size * lineHeightMultiplier;
             checkPageBreak(height);
             pdf.setFontSize(size);
@@ -413,7 +426,7 @@
             }
             y += height;
           } else if (line.type === 'instruction') {
-            const size = getScaledFontSize(line.content, instructionFontSize);
+            const size = getScaledFontSize(line.content, scaledInstructionFontSize);
             const height = size * lineHeightMultiplier;
             checkPageBreak(height);
             pdf.setFont('helvetica', 'italic');
@@ -423,7 +436,7 @@
             y += height;
           } else if (line.type === 'grid') {
             if (line.chords) {
-              const size = getScaledFontSize(line.chords, chordFontSize);
+              const size = getScaledFontSize(line.chords, scaledChordFontSize);
               const height = size * lineHeightMultiplier;
               checkPageBreak(height);
               pdf.setFont('helvetica', 'bold');
@@ -437,7 +450,7 @@
               const info = app.getLyricRenderInfo(line, section, firstLyricInVerse);
               if (info.isVerseFirst) firstLyricInVerse = false;
 
-              const size = getScaledFontSize(info.fullText, lyricFontSize);
+              const size = getScaledFontSize(info.fullText, scaledLyricFontSize);
               const height = size * lineHeightMultiplier;
               checkPageBreak(height);
               pdf.setFontSize(size);

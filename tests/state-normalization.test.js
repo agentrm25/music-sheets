@@ -39,6 +39,43 @@ test('createSection initializes an empty editor height', () => {
   const app = loadApp();
 
   assert.equal(app.createSection('chorus').editorHeight, '');
+  assert.equal(app.createSection('chorus').fontScale, 100);
+});
+
+test('section font scale uses the current size as its minimum', () => {
+  const app = loadApp();
+  const normalized = app.normalizeState({
+    sections: [
+      { fontScale: 80, lines: [] },
+      { fontScale: 150, lines: [] },
+      { fontScale: 250, lines: [] },
+      { lines: [] }
+    ]
+  });
+
+  assert.deepEqual(normalized.sections.map(section => section.fontScale), [100, 150, 200, 100]);
+});
+
+test('renumberVerses follows section order without numbering other section types', () => {
+  const app = loadApp();
+  const sections = [
+    { type: 'verse', verseNumber: 8 },
+    { type: 'chorus', verseNumber: null },
+    { type: 'verse', verseNumber: 3 }
+  ];
+
+  app.renumberVerses(sections);
+
+  assert.deepEqual(sections.map(section => section.verseNumber), [1, null, 2]);
+});
+
+test('normalizeState preserves blank lines', () => {
+  const app = loadApp();
+  const normalized = app.normalizeState({
+    sections: [{ lines: [{ id: 'space', type: 'blank', content: '', bold: false }] }]
+  });
+
+  assert.equal(normalized.sections[0].lines[0].type, 'blank');
 });
 
 test('createSection keeps auto-numbered verses within the documented limit', () => {

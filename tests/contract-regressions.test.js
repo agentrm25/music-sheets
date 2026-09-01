@@ -208,6 +208,8 @@ test('QA Tauri config is fully isolated while preserving production capabilities
   assert.equal(production.build.frontendDist, '../dist');
   assert.equal(qa.build.frontendDist, '../dist-qa');
   assert.notEqual(qa.build.frontendDist, production.build.frontendDist);
+  assert.equal(production.app.windows[0].dragDropEnabled, false);
+  assert.equal(qa.app.windows[0].dragDropEnabled, false);
   assert.deepEqual(qa.app.security, production.app.security);
   assert.deepEqual(qa.bundle, production.bundle);
 });

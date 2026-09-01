@@ -18,8 +18,8 @@
     app.commitChange();
     if (setFocus) {
       setTimeout(() => {
-        const inputList = document.querySelectorAll(`[data-section-id="${section.id}"] .line-input`);
-        if (inputList.length) inputList[inputList.length - 1].focus();
+        const input = document.querySelector(`.line-input[data-line-id="${line.id}"]`);
+        if (input) input.focus();
       }, 50);
     }
   };
@@ -62,14 +62,40 @@
   }
 
   function getSectionDropTarget(sourceId, x, y) {
-    let targetCard = document.elementFromPoint(x, y)?.closest('.section-card');
-    if (!targetCard || targetCard.dataset.sectionId === sourceId) return null;
+    const sourceCard = Array.from(document.querySelectorAll('.section-card'))
+      .find(card => card.dataset.sectionId === sourceId);
+    if (sourceCard) {
+      const sourceRect = sourceCard.getBoundingClientRect();
+      if (
+        x >= sourceRect.left && x <= sourceRect.left + sourceRect.width &&
+        y >= sourceRect.top && y <= sourceRect.top + sourceRect.height
+      ) return null;
+    }
 
-    const rect = targetCard.getBoundingClientRect();
+    const cards = Array.from(document.querySelectorAll('.section-card'))
+      .filter(card => card.dataset.sectionId !== sourceId);
+    if (!cards.length) return null;
+
+    const rects = cards.map(card => ({ card, rect: card.getBoundingClientRect() }));
+    const left = Math.min(...rects.map(item => item.rect.left));
+    const right = Math.max(...rects.map(item => item.rect.left + item.rect.width));
+    if (x < left - 48 || x > right + 48) return null;
+
+    let target = rects.find(item => y >= item.rect.top && y <= item.rect.top + item.rect.height);
+    if (!target) {
+      target = rects.reduce((closest, item) => {
+        const topDistance = Math.abs(y - item.rect.top);
+        const bottomDistance = Math.abs(y - (item.rect.top + item.rect.height));
+        const distance = Math.min(topDistance, bottomDistance);
+        return !closest || distance < closest.distance ? { ...item, distance } : closest;
+      }, null);
+    }
+
+    const rect = target.rect;
     return {
-      sectionId: targetCard.dataset.sectionId,
+      sectionId: target.card.dataset.sectionId,
       position: y < rect.top + rect.height / 2 ? 'above' : 'below',
-      card: targetCard
+      card: target.card
     };
   }
 
@@ -91,7 +117,7 @@
     app.pushUndo();
     const [moved] = app.state.sections.splice(fromIdx, 1);
     app.state.sections.splice(targetIdx, 0, moved);
-    app.pushUndo();
+    if (app.renumberVerses) app.renumberVerses(app.state.sections);
     app.commitChange();
     if (restoreFocus) focusSectionDragHandle(sourceId);
     return true;
@@ -246,12 +272,13 @@
     if (section.type === 'verse') {
       verseNumInput = document.createElement('input');
       verseNumInput.className = 'verse-number-input';
-      verseNumInput.type = 'number';
-      verseNumInput.min = '1';
-      verseNumInput.max = '99';
+      verseNumInput.type = 'text';
+      verseNumInput.inputMode = 'numeric';
+      verseNumInput.setAttribute('pattern', '[0-9]*');
       verseNumInput.value = section.verseNumber || 1;
       verseNumInput.title = 'Verse number';
       verseNumInput.setAttribute('aria-label', 'Verse number');
+      verseNumInput.addEventListener('click', () => verseNumInput.select());
       verseNumInput.addEventListener('change', () => {
         app.pushUndo();
         section.verseNumber = app.normalizeVerseNumber(verseNumInput.value) || 1;
@@ -259,6 +286,32 @@
         app.commitChange();
       });
     }
+
+    const fontScaleControl = document.createElement('label');
+    fontScaleControl.className = 'section-font-scale-control';
+    fontScaleControl.title = 'Section font size in preview and PDF';
+
+    const fontScaleText = document.createElement('span');
+    fontScaleText.textContent = 'Text';
+
+    const fontScaleSelect = document.createElement('select');
+    fontScaleSelect.className = 'section-font-scale-select';
+    fontScaleSelect.setAttribute('aria-label', 'Section font size');
+    for (let percent = 100; percent <= 200; percent += 10) {
+      const option = document.createElement('option');
+      option.value = String(percent);
+      option.textContent = `${percent}%`;
+      if (percent === app.normalizeSectionFontScale(section.fontScale)) option.selected = true;
+      fontScaleSelect.appendChild(option);
+    }
+    fontScaleSelect.addEventListener('change', () => {
+      app.pushUndo();
+      section.fontScale = app.normalizeSectionFontScale(fontScaleSelect.value);
+      fontScaleSelect.value = String(section.fontScale);
+      app.commitChange();
+    });
+    fontScaleControl.appendChild(fontScaleText);
+    fontScaleControl.appendChild(fontScaleSelect);
 
     let customInput = null;
     if (section.type === 'custom') {
@@ -358,6 +411,7 @@
     header.appendChild(typeSelect);
     if (verseNumInput) header.appendChild(verseNumInput);
     if (customInput) header.appendChild(customInput);
+    header.appendChild(fontScaleControl);
     if (repeatControl) header.appendChild(repeatControl);
     header.appendChild(actions);
 
@@ -386,6 +440,8 @@
     
     const addInstructionBtn = createSmallBtn('+ Instruction', () => app.addLineToSection(section, 'instruction'));
     addInstructionBtn.style.color = 'var(--accent-intro)';
+
+    const addBlankBtn = createSmallBtn('+ Blank', () => app.addLineToSection(section, 'blank', false));
     
     const addGridBtn = createSmallBtn('+ Chord + Lyric', () => app.addLineToSection(section, 'grid'));
     addGridBtn.style.color = 'var(--accent-primary)';
@@ -394,31 +450,11 @@
     addBar.appendChild(addLyricBtn);
     addBar.appendChild(addGridBtn);
     addBar.appendChild(addInstructionBtn);
+    addBar.appendChild(addBlankBtn);
 
     const lineDropZone = document.createElement('div');
     lineDropZone.className = 'line-drop-zone';
-    lineDropZone.addEventListener('dragover', e => {
-      if (!app.lineDragState) return;
-      e.preventDefault();
-      e.stopPropagation();
-      lineDropZone.classList.add('drag-over');
-    });
-    lineDropZone.addEventListener('dragleave', () => lineDropZone.classList.remove('drag-over'));
-    lineDropZone.addEventListener('drop', e => {
-      if (!app.lineDragState) return;
-      e.preventDefault();
-      e.stopPropagation();
-      lineDropZone.classList.remove('drag-over');
-      const sourceSec = app.state.sections.find(s => s.id === app.lineDragState.sectionId);
-      if (!sourceSec) return;
-      const srcIdx = sourceSec.lines.findIndex(l => l.id === app.lineDragState.lineId);
-      if (srcIdx < 0) return;
-      app.pushUndo();
-      const [moved] = sourceSec.lines.splice(srcIdx, 1);
-      section.lines.push(moved);
-      app.lineDragState = null;
-      app.commitChange();
-    });
+    lineDropZone.dataset.sectionId = section.id;
 
     body.appendChild(lineList);
     body.appendChild(lineDropZone);
@@ -464,6 +500,142 @@
     handle?.focus();
   }
 
+  function clearLineDropMarkers() {
+    document.querySelectorAll('.line-drag-above, .line-drop-zone.drag-over').forEach(element => {
+      element.classList.remove('line-drag-above', 'drag-over');
+    });
+  }
+
+  function getLineDropTarget(sourceSectionId, sourceLineId, x, y) {
+    const sourceElement = Array.from(document.querySelectorAll('.line-item'))
+      .find(element => element.dataset.sectionId === sourceSectionId && element.dataset.lineId === sourceLineId);
+    if (sourceElement) {
+      const sourceRect = sourceElement.getBoundingClientRect();
+      if (
+        x >= sourceRect.left && x <= sourceRect.left + sourceRect.width &&
+        y >= sourceRect.top && y <= sourceRect.top + sourceRect.height
+      ) return null;
+    }
+
+    const cards = Array.from(document.querySelectorAll('.section-card'));
+    if (!cards.length) return null;
+    const cardRects = cards.map(card => ({ card, rect: card.getBoundingClientRect() }));
+    const left = Math.min(...cardRects.map(item => item.rect.left));
+    const right = Math.max(...cardRects.map(item => item.rect.left + item.rect.width));
+    if (x < left - 48 || x > right + 48) return null;
+
+    let targetCard = cardRects.find(item => y >= item.rect.top && y <= item.rect.top + item.rect.height);
+    if (!targetCard) {
+      targetCard = cardRects.reduce((closest, item) => {
+        const distance = Math.min(
+          Math.abs(y - item.rect.top),
+          Math.abs(y - (item.rect.top + item.rect.height))
+        );
+        return !closest || distance < closest.distance ? { ...item, distance } : closest;
+      }, null);
+    }
+
+    const sectionId = targetCard.card.dataset.sectionId;
+    const section = app.state.sections.find(item => item.id === sectionId);
+    if (!section) return null;
+    const lineElements = Array.from(targetCard.card.querySelectorAll('.line-item'))
+      .filter(element => element.dataset.lineId !== sourceLineId);
+
+    for (const element of lineElements) {
+      const rect = element.getBoundingClientRect();
+      if (y < rect.top + rect.height / 2) {
+        return {
+          sectionId,
+          index: section.lines.findIndex(line => line.id === element.dataset.lineId),
+          marker: element,
+          markerClass: 'line-drag-above'
+        };
+      }
+    }
+
+    return {
+      sectionId,
+      index: section.lines.length,
+      marker: targetCard.card.querySelector('.line-drop-zone'),
+      markerClass: 'drag-over'
+    };
+  }
+
+  function moveLineToIndex(sourceSectionId, lineId, targetSectionId, targetIndex, restoreFocus = false) {
+    const sourceSection = app.state.sections.find(item => item.id === sourceSectionId);
+    const targetSection = app.state.sections.find(item => item.id === targetSectionId);
+    if (!sourceSection || !targetSection) return false;
+    const sourceIndex = sourceSection.lines.findIndex(item => item.id === lineId);
+    if (sourceIndex < 0) return false;
+
+    let insertionIndex = targetIndex;
+    if (sourceSection === targetSection && sourceIndex < insertionIndex) insertionIndex--;
+    if (sourceSection === targetSection && sourceIndex === insertionIndex) return false;
+
+    app.pushUndo();
+    const [moved] = sourceSection.lines.splice(sourceIndex, 1);
+    targetSection.lines.splice(insertionIndex, 0, moved);
+    app.commitChange();
+    if (restoreFocus) focusLineDragHandle(lineId);
+    return true;
+  }
+
+  function bindLineReorder(section, line, item, dragHandle) {
+    dragHandle.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let isDragging = false;
+      let currentTarget = null;
+
+      const cleanup = () => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onEnd);
+        document.removeEventListener('pointercancel', onCancel);
+        dragHandle.releasePointerCapture?.(event.pointerId);
+        document.body.classList.remove('line-reorder-active');
+        item.classList.remove('dragging');
+        dragHandle.classList.remove('is-dragging');
+        clearLineDropMarkers();
+      };
+
+      const onMove = moveEvent => {
+        const movedFarEnough = Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3;
+        if (!isDragging && !movedFarEnough) return;
+        isDragging = true;
+        app.lineDragState = { sectionId: section.id, lineId: line.id };
+        document.body.classList.add('line-reorder-active');
+        item.classList.add('dragging');
+        dragHandle.classList.add('is-dragging');
+        clearLineDropMarkers();
+        currentTarget = getLineDropTarget(section.id, line.id, moveEvent.clientX, moveEvent.clientY);
+        currentTarget?.marker?.classList.add(currentTarget.markerClass);
+      };
+
+      const onEnd = () => {
+        const target = currentTarget;
+        cleanup();
+        app.lineDragState = null;
+        if (isDragging && target) {
+          moveLineToIndex(section.id, line.id, target.sectionId, target.index);
+        }
+      };
+
+      const onCancel = () => {
+        cleanup();
+        app.lineDragState = null;
+      };
+
+      dragHandle.setPointerCapture?.(event.pointerId);
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onEnd, { once: true });
+      document.addEventListener('pointercancel', onCancel, { once: true });
+    });
+  }
+
   function moveLineByKeyboard(sectionId, lineId, direction) {
     const sectionIndex = app.state.sections.findIndex(item => item.id === sectionId);
     const sourceSection = app.state.sections[sectionIndex];
@@ -501,6 +673,7 @@
     const item = document.createElement('div');
     item.className = 'line-item';
     item.dataset.lineId = line.id;
+    item.dataset.sectionId = section.id;
 
     const dragHandle = document.createElement('button');
     dragHandle.type = 'button';
@@ -508,7 +681,6 @@
     dragHandle.dataset.lineId = line.id;
     dragHandle.dataset.sectionId = section.id;
     dragHandle.innerHTML = '⠿';
-    dragHandle.draggable = true;
     dragHandle.title = 'Drag to reorder or use Alt+Arrow keys';
     dragHandle.setAttribute('aria-label', 'Reorder line by dragging or with Alt+Arrow Up or Down');
     dragHandle.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
@@ -518,52 +690,7 @@
         event.preventDefault();
       }
     });
-    dragHandle.addEventListener('dragstart', e => {
-      e.stopPropagation();
-      app.lineDragState = { sectionId: section.id, lineId: line.id };
-      e.dataTransfer.setData('application/x-line-drag', 'line');
-      e.dataTransfer.effectAllowed = 'move';
-      item.classList.add('dragging');
-    });
-    dragHandle.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-      app.lineDragState = null;
-      document.querySelectorAll('.line-drag-above, .line-drag-below').forEach(el => {
-        el.classList.remove('line-drag-above', 'line-drag-below');
-      });
-    });
-
-    item.addEventListener('dragover', e => {
-      if (!app.lineDragState) return;
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
-      const rect = item.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      item.classList.remove('line-drag-above', 'line-drag-below');
-      item.classList.add(e.clientY < midY ? 'line-drag-above' : 'line-drag-below');
-    });
-    item.addEventListener('dragleave', () => {
-      item.classList.remove('line-drag-above', 'line-drag-below');
-    });
-    item.addEventListener('drop', e => {
-      if (!app.lineDragState) return;
-      e.preventDefault();
-      e.stopPropagation();
-      item.classList.remove('line-drag-above', 'line-drag-below');
-      const sourceSec = app.state.sections.find(s => s.id === app.lineDragState.sectionId);
-      if (!sourceSec) return;
-      const srcIdx = sourceSec.lines.findIndex(l => l.id === app.lineDragState.lineId);
-      if (srcIdx < 0) return;
-      const rect = item.getBoundingClientRect();
-      let targetIdx = e.clientY < (rect.top + rect.height / 2) ? lIdx : lIdx + 1;
-      app.pushUndo();
-      const [moved] = sourceSec.lines.splice(srcIdx, 1);
-      if (sourceSec.id === section.id && srcIdx < targetIdx) targetIdx--;
-      section.lines.splice(targetIdx, 0, moved);
-      app.lineDragState = null;
-      app.commitChange();
-    });
+    bindLineReorder(section, line, item, dragHandle);
 
     const indicator = document.createElement('div');
     indicator.className = `line-type-indicator ${line.type}${line.bold ? ' lyric-bold' : ''}`;
@@ -575,7 +702,8 @@
       { value: 'chord', label: 'Chord' },
       { value: 'lyric', label: 'Lyric' },
       { value: 'instruction', label: 'Instruction' },
-      { value: 'grid', label: 'Chord + Lyric' }
+      { value: 'grid', label: 'Chord + Lyric' },
+      { value: 'blank', label: 'Blank' }
     ].forEach(opt => {
       const o = document.createElement('option');
       o.value = opt.value;
@@ -595,12 +723,17 @@
     let input = null;
     let gridInputs = null;
 
-    if (line.type === 'grid') {
+    if (line.type === 'blank') {
+      inputsWrapper = document.createElement('div');
+      inputsWrapper.className = 'blank-line-editor';
+      inputsWrapper.textContent = 'Blank line';
+    } else if (line.type === 'grid') {
       gridInputs = document.createElement('div');
       gridInputs.className = 'grid-inputs';
 
       const chordInput = document.createElement('input');
       chordInput.className = 'line-input grid-chords';
+      chordInput.dataset.lineId = line.id;
       chordInput.type = 'text';
       chordInput.value = line.chords || '';
       chordInput.placeholder = 'e.g. Am  C  G  D';
@@ -616,6 +749,7 @@
 
       const lyricInput = document.createElement('input');
       lyricInput.className = `line-input grid-lyric${line.bold ? ' lyric-bold' : ''}`;
+      lyricInput.dataset.lineId = line.id;
       lyricInput.type = 'text';
       lyricInput.value = line.content;
       lyricInput.placeholder = 'Lyrics go here…';
@@ -639,11 +773,8 @@
           section.lines.splice(lIdx + 1, 0, newLine);
           app.commitChange();
           setTimeout(() => {
-            const card = document.querySelector(`[data-section-id="${section.id}"]`);
-            if (card) {
-              const inputs = card.querySelectorAll('.grid-lyric');
-              if (inputs[lIdx + 1]) inputs[lIdx + 1].focus();
-            }
+            const nextInput = document.querySelector(`.grid-lyric[data-line-id="${newLine.id}"]`);
+            if (nextInput) nextInput.focus();
           }, 50);
         }
       });
@@ -651,6 +782,7 @@
     } else {
       input = document.createElement('input');
       input.className = `line-input ${line.type}${line.bold ? ' lyric-bold' : ''}`;
+      input.dataset.lineId = line.id;
       input.value = line.content;
       input.placeholder = line.type === 'chord' ? 'e.g. Am, G, C, F' : line.type === 'instruction' ? 'e.g. [Drum fill]' : 'Lyrics… use **bold** for partial bold';
       const inputTypeName = line.type === 'chord' ? 'chords' : line.type === 'instruction' ? 'instruction' : 'lyrics';
@@ -673,11 +805,8 @@
           section.lines.splice(lIdx + 1, 0, newLine);
           app.commitChange();
           setTimeout(() => {
-            const card = document.querySelector(`[data-section-id="${section.id}"]`);
-            if (card) {
-              const inputs = card.querySelectorAll('.line-input');
-              if (inputs[lIdx + 1]) inputs[lIdx + 1].focus();
-            }
+            const nextInput = document.querySelector(`.line-input[data-line-id="${newLine.id}"]`);
+            if (nextInput) nextInput.focus();
           }, 50);
         }
       });

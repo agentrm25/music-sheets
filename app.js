@@ -132,13 +132,6 @@
       el.addEventListener('blur', () => app.commitTextEdit());
       el.addEventListener('input', () => {
         app.state[prop] = el.value;
-        if (id === 'key') {
-          if (!app.state.originalKey && el.value) {
-            app.state.originalKey = el.value;
-            const originalKeyInput = document.getElementById('input-original-key');
-            if (originalKeyInput) originalKeyInput.value = el.value;
-          }
-        }
         app.renderPreview();
         app.autoSave();
       });
@@ -362,6 +355,7 @@
     let useFlats = false;
 
     if (app.state.key) {
+      if (!app.state.originalKey) app.state.originalKey = app.state.key;
       useFlats = app.determineUseFlats(app.state.key);
       newKey = app.transposeNote(app.state.key, semitones, useFlats);
       app.state.key = newKey;

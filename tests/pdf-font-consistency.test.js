@@ -14,7 +14,9 @@ test('PDF grid chords and lyrics use Helvetica', async () => {
       renderedText.push({
         text: args[0],
         fontName: font.fontName,
-        fontStyle: font.fontStyle
+        fontStyle: font.fontStyle,
+        fontSize: pdf.getFontSize(),
+        y: args[2]
       });
       return drawText(...args);
     };
@@ -36,7 +38,12 @@ test('PDF grid chords and lyrics use Helvetica', async () => {
       sections: [{
         type: 'chorus',
         repeat: null,
-        lines: [{ type: 'grid', chords: 'C#, B', content: 'Fresh Air', bold: false }]
+        fontScale: 150,
+        lines: [
+          { type: 'grid', chords: 'C#, B', content: 'Fresh Air', bold: false },
+          { type: 'blank', content: '', bold: false },
+          { type: 'lyric', content: 'Later', bold: false }
+        ]
       }]
     },
     SECTION_META: {
@@ -54,6 +61,9 @@ test('PDF grid chords and lyrics use Helvetica', async () => {
     },
     parseInlineBold(text) {
       return [{ text, bold: false }];
+    },
+    normalizeSectionFontScale(value) {
+      return value || 100;
     },
     showToast() {}
   };
@@ -74,6 +84,11 @@ test('PDF grid chords and lyrics use Helvetica', async () => {
 
   assert.equal(chord?.fontName, 'helvetica');
   assert.equal(chord?.fontStyle, 'bold');
+  assert.equal(chord?.fontSize, 24);
   assert.equal(lyric?.fontName, 'helvetica');
   assert.equal(lyric?.fontStyle, 'normal');
+  assert.ok(Math.abs(lyric.fontSize - 26.4) < 0.001);
+
+  const later = renderedText.find(entry => entry.text === 'Later');
+  assert.ok(later.y - lyric.y > 60, 'blank line should add vertical PDF space');
 });
