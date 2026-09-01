@@ -1,5 +1,7 @@
 /dist/
 /dist-qa/
+/output/
+/tmp/
 /.venv/
 /node_modules/
 *.log
@@ -24,11 +26,17 @@ pnpm-debug.log*
 *code-review*
 *security-review*
 *audit*
+*handoff*
+*project_summary*
+production-scale-qa-*
 feature_suggestions.md
 walkthrough.md
+/walkthrough.png
 fixes_*
 
-# Agent and project outputs
+# Local agent, QA evidence, and project outputs
+/.codex/
+/qa/evidence/
 .claude/
 claude/
 .qwen/

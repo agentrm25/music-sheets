@@ -2,69 +2,71 @@
 
 # Chart Creator
 
-Create color-coded music charts, organize them in a local library, and export them as JSON or print-ready PDFs. Chart Creator uses vanilla HTML, CSS, and JavaScript inside a Tauri desktop shell.
+Chart Creator is a local-first desktop application for building color-coded music charts, organizing a personal chart library, and exporting charts as JSON or print-ready PDFs. The interface is written in vanilla HTML, CSS, and JavaScript and packaged with Tauri 2.
 
-## Installation
+> **Release status:** Chart Creator is pre-release software. The published installers are unsigned, and the data format or behavior may change between releases. Back up important charts with **Export JSON**.
 
-Download the latest installer from [GitHub Releases](https://github.com/agentrm25/music-sheets/releases).
+## What Chart Creator does
+
+- Builds charts from sections containing chords, lyrics, instructions, combined chord-and-lyric rows, and blank spacing rows.
+- Transposes supported chord symbols while leaving lyrics and instructions unchanged.
+- Provides section templates, pointer and keyboard reordering, per-section text scaling, search and replace, and undo/redo.
+- Maintains a local chart library with groups, favorites, versions, private workflow fields, and reusable collected sections.
+- Imports chart text or Chart Creator JSON and exports the current chart as JSON or a US Letter PDF.
+- Optionally mirrors library saves to a user-selected folder when running as the desktop application.
+
+## Install a published build
+
+Open the [Chart Creator releases page](https://github.com/agentrm25/music-sheets/releases). The current public release is a pre-release.
 
 ### macOS
 
-1. Check your Mac's chip: Click the Apple icon () in the top-left corner of your screen and select **About This Mac**. Look at **Processor** or **Chip**.
-2. From the release assets, download the `.dmg` file matching your Mac:
-   - **Apple Silicon (M1, M2, M3, M4, etc.)**: Download the file ending in `_aarch64.dmg`.
-   - **Intel Processor**: Download the file ending in `_x64.dmg`.
-3. Open the downloaded `.dmg` file and drag the **Chart Creator** icon into your **Applications** folder.
-4. **First-time Launch Setup (Unsigned App warning)**:
-   - Go to your Applications folder.
-   - Hold the **Control** key and click the app icon, then choose **Open** from the menu.
-   - Click **Open** in the warning box that appears. This is only needed for the very first launch.
+The current release provides an Apple Silicon build only:
+
+1. Download `chart-creator_0.1.0_aarch64.dmg` for an M-series Mac.
+2. Open the disk image and drag Chart Creator to **Applications**.
+3. On first launch, Control-click the application, choose **Open**, and confirm the unsigned-app warning.
+
+An Apple Silicon `.app.tar.gz` is also available for users who prefer the archive. There is no Intel macOS installer in the current release.
 
 ### Windows
 
-1. From the release assets, download the Windows `.msi` or setup `.exe` installer.
-2. Double-click the downloaded file.
-3. **First-time Launch Setup (Windows SmartScreen warning)**:
-   - Since the app is unsigned, Windows may show a blue box saying *"Windows protected your PC"*.
-   - Click **More info** (under the text), then click **Run anyway**.
+The current release provides 64-bit Windows installers:
 
-## Interface
+1. Download either the `_x64-setup.exe` installer or the `_x64_en-US.msi` package.
+2. Run the downloaded installer.
+3. If Microsoft Defender SmartScreen appears, review the publisher warning, choose **More info**, and select **Run anyway** only if the file came from this repository's release page.
 
-The three-panel workspace provides an intuitive chart-building experience:
+## Start using the application
 
-1. **Song Details (left)**: Edit title, artist, key, original key, BPM, time signature, capo, arrangement notes, and the compact saved-chart list.
-2. **Editor (center)**: Build sections and lines, or switch among the Sections, Versions, Info, and Collected tabs.
-3. **Live Preview (right)**: Review print output with automatic line fitting, zoom controls, and page-break guides.
+1. Enter the song title, artist, musical key, tempo, meter, capo, and optional arrangement notes in the left panel.
+2. Choose a section template and add it at the top or bottom of the chart.
+3. Select each section and line type, then enter chords, lyrics, instructions, or combined chord-and-lyric content.
+4. Check the live preview and adjust the section's **Text** percentage when a section needs larger output.
+5. Select **Save to Library** to keep the chart in this browser or desktop application's local storage.
+6. Select **Export JSON** for a portable backup and **Export PDF** for a printable chart.
 
-Use the toolbar workspace switch to move between the three-panel editor and the full library view.
+The complete workflow, including imports, groups, versions, collected sections, keyboard controls, and recovery steps, is in the [User Guide](docs/USER_GUIDE.md).
 
-## Features
+## Data safety at a glance
 
-- **Three-panel workspace** — sidebar for metadata, center for the section editor, right for live preview
-- **Smart transposition** — transpose entire charts by semitones with automatic sharp/flat spelling and complex chord support (slash chords, extensions, sus, dim, aug)
-- **Section editor** — drag-and-drop sections and lines, custom resize, collapsible cards, six presets (Empty, Verse, Chorus, Bridge, Intro/Outro, Instrumental), and repeat controls for non-verse sections
-- **Color-coded output** — section types and chords use a consistent application palette with tuned sizes for chords, lyrics, instructions, and headers
-- **PDF export** — page-budgeted Letter output with line fitting, page numbers, bracket-wrapped arrangement notes, and the same core sizing rules as the preview
-- **Search and replace** — inline bar with regex and case-sensitive support across all chord, lyric, instruction, and chord + lyric content
-- **Text import** — paste raw chart text and let the parser detect chord lines, section labels, and lyrics
-- **Library manager** — search, sort, favorite, group, load, and delete charts stored in `localStorage`
-- **Versions and collected sections** — save chart snapshots and reuse copied sections with fresh IDs
-- **Private workflow info** — track group, status, source, and private notes that stay out of preview and PDF output
-- **Desktop folder mirror** — optionally mirror saved charts as ID-stable JSON files from the Tauri app
-- **JSON import/export** — open validated chart JSON and export current chart state separately from library Save
-- **Undo/redo** — 50-entry stack with batched text-editing so typing feels natural
-- **Persistent light/dark themes** — toggle the application theme while keeping chart output print-ready
-- **Keyboard and accessibility support** — semantic dialogs and tabs, focus trapping, keyboard reordering, and documented shortcuts
+- Chart data is stored in the current browser or desktop webview's `localStorage`; it is not synchronized to an account or server.
+- Browser mode and the installed desktop application use different storage origins and therefore do not share a library automatically.
+- Clearing site/application data can permanently remove the draft, library, groups, versions, collected sections, and settings.
+- **Export JSON** is the portable backup mechanism. Private Info fields are included in JSON exports but excluded from PDFs.
+- Deleting a library chart does not delete a JSON file previously written to a desktop mirror folder.
 
-## Quick Start
+Read [Data, Backups, and Privacy](docs/DATA_AND_PRIVACY.md) before relying on the application for an important library.
+
+## Run from source
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) (for the dev server)
-- [Rust](https://rustup.rs) (for the Tauri desktop build)
-- macOS or Windows for packaged desktop releases; browser mode works anywhere Node.js can run
+- Node.js 20 or newer
+- Rust 1.77.2 or newer
+- The platform prerequisites required by Tauri 2
 
-### Run in a Browser (no Rust needed)
+### Browser mode
 
 ```bash
 git clone https://github.com/agentrm25/music-sheets.git
@@ -73,9 +75,9 @@ node build.js
 npx --yes http-server@14.1.1 dist -p 1420
 ```
 
-Open [http://localhost:1420](http://localhost:1420).
+Open [http://localhost:1420](http://localhost:1420). Browser mode supports editing, local library storage, JSON import/export, and PDF export. Selecting a desktop mirror folder is available only in the Tauri application.
 
-### Run as a Desktop App
+### Desktop development mode
 
 ```bash
 git clone https://github.com/agentrm25/music-sheets.git
@@ -83,80 +85,38 @@ cd music-sheets
 npm exec --yes --package=@tauri-apps/cli@2.11.4 -- tauri dev
 ```
 
-## Build
+### Build and test
 
 ```bash
 npm exec --yes --package=@tauri-apps/cli@2.11.4 -- tauri build
-```
-
-The packaged app lands in `src-tauri/target/release/bundle/`.
-
-Linux is supported for browser development, but the tag-triggered release workflow currently publishes only macOS and Windows installers.
-
-## Data and File Behavior
-
-- The current draft, library, groups, collected sections, versions, and settings live in origin-specific `localStorage`. Clearing browser/app site data removes them.
-- **Save to Library** updates the local library. In the desktop app, it also writes the current chart to the selected mirror folder when one is configured.
-- **Export JSON** writes only the current chart state, including Info fields; library versions and the collected-section catalog are not included.
-- Mirror files use chart-ID-based names, update on library Save, and are not removed when a chart is deleted from the local library.
-- Folder-write failures do not undo a successful local-library Save; the app reports the mirror failure separately.
-
-## Validation
-
-```bash
 node --test --test-concurrency=1 tests/*.test.js
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-On macOS, `./script/build_and_run.sh --verify` builds and launches an isolated QA app with bundle ID `com.chartcreator.music.qa`. Its generated frontend, Rust target, and WebKit data are separate from production. Use `--reset` only when you intentionally want to clear that QA-only WebKit store and reseed the synthetic corpus.
+Packaged applications are written under `src-tauri/target/release/bundle/`. See the [Development Guide](docs/DEVELOPMENT.md) for architecture, generated files, isolated QA, and release details.
 
-## Tech Stack
+## Documentation
+
+- [User Guide](docs/USER_GUIDE.md) — create, edit, organize, import, export, and recover charts.
+- [Data, Backups, and Privacy](docs/DATA_AND_PRIVACY.md) — storage boundaries, backup behavior, mirror files, and privacy implications.
+- [PDF Output Reference](docs/PDF_OUTPUT.md) — public output contract, typography, pagination, and known limitations.
+- [Development Guide](docs/DEVELOPMENT.md) — setup, project structure, testing, QA isolation, and releases.
+- [Contributing](CONTRIBUTING.md) — change workflow and public-documentation rules.
+
+## Technology
 
 | Layer | Technology |
-|:---|:---|
-| Shell | Tauri 2 (Rust) |
-| UI | Vanilla HTML/CSS/JS — no framework |
-| PDF | jsPDF 4.2.1 (bundled locally) |
-| Storage | `localStorage` |
-
-## Project Structure
-
-```
-.
-├── .github/workflows/
-│   └── release.yml        # Pinned GitHub Actions release build
-├── index.html              # Main HTML — three-panel layout, modals
-├── app.js                  # App glue — event bindings and init
-├── build.js                # Copies browser assets into dist/ for Tauri/dev server
-├── style.css               # Editor (light/dark) and preview paper (print) styles
-├── src-js/
-│   ├── constants.js        # Section metadata, verse colors
-│   ├── state.js            # State factory, ID generation, templates
-│   ├── storage.js          # localStorage auto-save/load, library CRUD
-│   ├── editor.js           # Section card builder, line items, drag-and-drop
-│   ├── preview.js          # Chart paper renderer, auto-scale, zoom
-│   ├── import-export.js    # JSON and PDF export, text import parser
-│   ├── transpose.js        # Chord transposition engine
-│   ├── undo.js             # UndoManager with text-edit batching
-│   ├── ui.js               # Dialogs, toasts, status, find/replace
-│   └── workflow.js         # Full library, groups, versions, info, collected sections
-├── qa/                      # Synthetic data and native QA evidence
-├── script/                  # Isolated QA build/run helpers
-├── tests/                   # Node regression and contract tests
-├── jspdf.umd.min.js        # Bundled PDF library
-├── src-tauri/              # Tauri backend (Rust)
-│   ├── Cargo.toml          # Rust dependencies
-│   ├── capabilities/       # Tauri runtime permissions
-│   ├── tauri.conf.json     # CSP, window config, build commands
-│   ├── tauri.qa.conf.json  # Isolated native QA bundle/configuration
-│   └── src/lib.rs          # Tauri app setup
-└── icon.png                # App icon
-```
+| --- | --- |
+| Desktop shell | Tauri 2 and Rust |
+| Interface | Vanilla HTML, CSS, and JavaScript |
+| PDF generation | Bundled jsPDF 4.2.1 |
+| Primary storage | Origin-specific `localStorage` |
+| Automated checks | Node's built-in test runner and Cargo |
 
 ## Security
 
-The PDF dependency is bundled locally. The Content Security Policy restricts scripts to `'self'`, saved charts remain local unless a desktop mirror folder is selected, and release workflow actions are pinned to immutable commit SHAs.
+The application has no account system or hosted synchronization service. Its bundled Content Security Policy restricts scripts and network connections to the application itself, and the PDF library is stored in the repository rather than downloaded at runtime. Do not include private chart content, filesystem paths, credentials, or personal data in public bug reports.
 
 ## License
 
-This repository does not currently include a license file.
+This repository does not currently contain a license. Public access to the source does not grant permission to copy, modify, or redistribute it.
