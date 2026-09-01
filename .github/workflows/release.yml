@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-13' # Intel x86_64
+          - platform: 'macos-15-intel' # Intel x86_64
             args: ''
-          - platform: 'macos-14' # Apple Silicon aarch64
+          - platform: 'macos-15' # Apple Silicon aarch64
             args: ''
           - platform: 'windows-latest'
             args: ''
@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable

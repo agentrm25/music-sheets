@@ -5,7 +5,7 @@ This guide describes the public source tree, local development commands, test su
 ## Prerequisites
 
 - Git
-- Node.js 20 or newer
+- Node.js 24 or newer
 - Rust 1.77.2 or newer through `rustup`
 - Platform build dependencies required by [Tauri 2](https://v2.tauri.app/start/prerequisites/)
 
@@ -202,11 +202,11 @@ PDF export is implemented directly with bundled jsPDF. The exporter, not the liv
 
 `.github/workflows/release.yml` runs when a tag matching `v*` is pushed. It builds on:
 
-- macOS 13 for Intel;
-- macOS 14 for Apple Silicon;
+- macOS 15 for Intel (`macos-15-intel`);
+- macOS 15 for Apple Silicon (`macos-15`);
 - current Windows hosted runners.
 
-The workflow uses Node.js 20, stable Rust, a Rust cache, and Tauri's release action. It creates a **draft** GitHub release; a maintainer must inspect assets and publish the release manually.
+The workflow uses Node.js 24, stable Rust, a Rust cache, and Tauri's release action. It creates a **draft** GitHub release; a maintainer must inspect assets and publish the release manually.
 
 Before creating a release tag:
 

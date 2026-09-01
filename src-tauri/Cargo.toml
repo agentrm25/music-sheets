@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.5.0"
 description = "Tauri desktop shell for Chart Creator"
 repository = "https://github.com/agentrm25/music-sheets"
 edition = "2021"

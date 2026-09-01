@@ -21,19 +21,18 @@ Open the [Chart Creator releases page](https://github.com/agentrm25/music-sheets
 
 ### macOS
 
-The current release provides an Apple Silicon build only:
+Choose the disk image that matches your Mac:
 
-1. Download `chart-creator_0.1.0_aarch64.dmg` for an M-series Mac.
-2. Open the disk image and drag Chart Creator to **Applications**.
-3. On first launch, Control-click the application, choose **Open**, and confirm the unsigned-app warning.
+- Apple Silicon (M-series): `chart-creator_0.5.0_aarch64.dmg`
+- Intel: `chart-creator_0.5.0_x64.dmg`
 
-An Apple Silicon `.app.tar.gz` is also available for users who prefer the archive. There is no Intel macOS installer in the current release.
+Open the disk image and drag Chart Creator to **Applications**. On first launch, Control-click the application, choose **Open**, and confirm the unsigned-app warning. Matching `.app.tar.gz` archives are also available.
 
 ### Windows
 
 The current release provides 64-bit Windows installers:
 
-1. Download either the `_x64-setup.exe` installer or the `_x64_en-US.msi` package.
+1. Download either `chart-creator_0.5.0_x64-setup.exe` or `chart-creator_0.5.0_x64_en-US.msi`.
 2. Run the downloaded installer.
 3. If Microsoft Defender SmartScreen appears, review the publisher warning, choose **More info**, and select **Run anyway** only if the file came from this repository's release page.
 
@@ -62,7 +61,7 @@ Read [Data, Backups, and Privacy](docs/DATA_AND_PRIVACY.md) before relying on th
 
 ### Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24 or newer
 - Rust 1.77.2 or newer
 - The platform prerequisites required by Tauri 2
 
