@@ -109,6 +109,8 @@
     const sort = $('full-library-sort')?.value || 'date';
     const selected = app.librarySelectedGroupId || 'all';
     let charts = app.getSavedCharts();
+    const groupNames = new Map(app.getGroups().map(group => [group.id, group.name]));
+    const groupName = id => groupNames.get(id) || 'Ungrouped';
 
     if (selected === 'ungrouped') {
       charts = charts.filter(chart => !chart.groupId);
@@ -118,12 +120,11 @@
 
     if (search) {
       charts = charts.filter(chart => {
-        const groupName = app.getGroupName(chart.groupId).toLowerCase();
         return [
           chart.name,
           chart.data.artist,
           chart.key,
-          groupName,
+          groupName(chart.groupId),
           chart.data.status
         ].some(value => (value || '').toLowerCase().includes(search));
       });
@@ -132,7 +133,7 @@
     charts.sort((a, b) => {
       if (sort === 'alpha') return a.name.localeCompare(b.name);
       if (sort === 'key') return (a.key || 'Z').localeCompare(b.key || 'Z');
-      if (sort === 'group') return app.getGroupName(a.groupId).localeCompare(app.getGroupName(b.groupId));
+      if (sort === 'group') return groupName(a.groupId).localeCompare(groupName(b.groupId));
       return new Date(b.savedAt) - new Date(a.savedAt);
     });
 
@@ -228,7 +229,7 @@
     groupInput.value = current;
   };
 
-  function createGroupSelect(chart) {
+  function createGroupSelect(chart, groups) {
     const select = document.createElement('select');
     select.className = 'form-select library-card-group-select';
     select.setAttribute('aria-label', `Group for ${chart.name}`);
@@ -238,7 +239,7 @@
     blank.textContent = 'Ungrouped';
     select.appendChild(blank);
 
-    app.getGroups().forEach(group => {
+    groups.forEach(group => {
       const option = document.createElement('option');
       option.value = group.id;
       option.textContent = group.name;
@@ -254,7 +255,7 @@
     return select;
   }
 
-  function createLibraryCard(chart) {
+  function createLibraryCard(chart, groups) {
     const card = document.createElement('article');
     card.className = 'library-card';
     const openChart = () => app.requestLoadChartFromLibrary(chart.data.id);
@@ -316,7 +317,7 @@
       openChart();
     });
     footer.appendChild(openBtn);
-    footer.appendChild(createGroupSelect(chart));
+    footer.appendChild(createGroupSelect(chart, groups));
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -379,7 +380,8 @@
       return;
     }
 
-    charts.forEach(chart => grid.appendChild(createLibraryCard(chart)));
+    const groups = app.getGroups();
+    charts.forEach(chart => grid.appendChild(createLibraryCard(chart, groups)));
   };
 
   app.renderVersions = function() {
@@ -632,7 +634,7 @@
     });
 
     $('btn-new-group')?.addEventListener('click', () => app.openGroupModal());
-    $('full-library-search')?.addEventListener('input', () => app.renderFullLibrary());
+    $('full-library-search')?.addEventListener('input', app.debounce(() => app.renderFullLibrary(), app.SEARCH_DEBOUNCE_MS));
     $('full-library-sort')?.addEventListener('change', () => app.renderFullLibrary());
 
     $('btn-group-cancel')?.addEventListener('click', () => app.closeGroupModal());

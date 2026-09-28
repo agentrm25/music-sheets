@@ -153,6 +153,10 @@
   };
 
   app.renderPreview = function() {
+    if (previewFrame !== null) {
+      cancelFrame(previewFrame);
+      previewFrame = null;
+    }
     const paper = document.getElementById('chart-paper');
     if (!paper) return;
     paper.innerHTML = '';
@@ -346,27 +350,35 @@
     if (availableWidth <= 0) return;
 
     const LINE_SELECTOR = '.chart-chord-line, .chart-lyric-line, .chart-lyric-bold, .chart-instruction';
-    const lines = paper.querySelectorAll(LINE_SELECTOR);
+    const lines = Array.from(paper.querySelectorAll(LINE_SELECTOR))
+      .filter(el => !el.closest('.chart-aligned-grid'));
 
-    lines.forEach(el => {
-      if (el.closest('.chart-aligned-grid')) return;
-      const origWhiteSpace = el.style.whiteSpace;
-      const origFontSize = parseFloat(getComputedStyle(el).fontSize);
-      if (!origFontSize) return;
+    // Batch reads and writes so measuring N lines costs one layout, not N.
+    const measured = lines
+      .map(el => ({ el, fontSize: parseFloat(getComputedStyle(el).fontSize), whiteSpace: el.style.whiteSpace }))
+      .filter(item => item.fontSize);
+    measured.forEach(item => { item.el.style.whiteSpace = 'nowrap'; });
+    measured.forEach(item => { item.scale = availableWidth / item.el.scrollWidth; });
+    measured.forEach(item => {
+      if (item.scale < 1) item.el.style.fontSize = `${item.fontSize * Math.max(item.scale, 0.6)}px`;
+      item.el.style.whiteSpace = item.whiteSpace || '';
+    });
+  };
 
-      el.style.whiteSpace = 'nowrap';
-      const scale = availableWidth / el.scrollWidth;
+  // Coalesce preview rebuilds triggered while typing into one per frame.
+  let previewFrame = null;
+  const requestFrame = callback => (typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame(callback)
+    : setTimeout(callback, 16));
+  const cancelFrame = id => (typeof cancelAnimationFrame === 'function'
+    ? cancelAnimationFrame(id)
+    : clearTimeout(id));
 
-      if (scale < 1) {
-        const clamped = Math.max(scale, 0.6);
-        el.style.fontSize = `${origFontSize * clamped}px`;
-      }
-
-      if (origWhiteSpace) {
-        el.style.whiteSpace = origWhiteSpace;
-      } else {
-        el.style.whiteSpace = '';
-      }
+  app.schedulePreview = function() {
+    if (previewFrame !== null) return;
+    previewFrame = requestFrame(() => {
+      previewFrame = null;
+      app.renderPreview();
     });
   };
 

@@ -258,3 +258,24 @@ test('Find and Replace reveal the editor from compact panels and restore the pri
     assert.equal(workspace.dataset.panel, 'editor', 'Dismissal during navigation must not restore an old panel');
   }
 });
+
+test('typing does not re-read and normalize the whole Library on every keystroke', async () => {
+  const env = createApp();
+  env.app.state.title = 'Fast typing';
+  await env.app.saveChartToLibrary();
+
+  let libraryReads = 0;
+  env.app.getLibrarySaveState();
+  const getSavedCharts = env.app.getSavedCharts;
+  env.app.getSavedCharts = (...args) => { libraryReads += 1; return getSavedCharts(...args); };
+
+  for (const letter of 'abcdef') {
+    env.app.state.artist = (env.app.state.artist || '') + letter;
+    env.app.autoSave();
+  }
+  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(libraryReads, 0);
+
+  await env.app.saveChartToLibrary();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+});

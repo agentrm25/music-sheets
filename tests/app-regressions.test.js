@@ -967,6 +967,7 @@ function bootApplication({ theme = 'dark' } = {}) {
   environment.app.bindWorkflowEvents = () => {};
   environment.app.renderEditor = () => {};
   environment.app.renderPreview = () => {};
+  environment.app.schedulePreview = () => environment.app.renderPreview();
   environment.app.renderSavedCharts = () => {};
   environment.app.renderInfoPanel = () => {};
   environment.app.renderCollectedSections = () => {};
@@ -986,6 +987,7 @@ function bootApplication({ theme = 'dark' } = {}) {
   environment.app.transposeNote = value => value;
   environment.app.transposeChordLine = value => value;
 
+  freshRequire('src-js/constants.js');
   freshRequire('app.js');
   environment.document.dispatchEvent(makeEvent('DOMContentLoaded'));
   return { environment, calls };

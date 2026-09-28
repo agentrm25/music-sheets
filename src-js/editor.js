@@ -390,7 +390,7 @@
       customInput.addEventListener('blur', () => app.commitTextEdit());
       customInput.addEventListener('input', () => {
         section.customLabel = customInput.value;
-        if (app.renderPreview) app.renderPreview();
+        if (app.schedulePreview) app.schedulePreview();
         if (app.autoSave) app.autoSave();
       });
     }
@@ -828,7 +828,7 @@
       chordInput.addEventListener('blur', () => app.commitTextEdit());
       chordInput.addEventListener('input', () => {
         line.chords = chordInput.value;
-        if (app.renderPreview) app.renderPreview();
+        if (app.schedulePreview) app.schedulePreview();
         if (app.autoSave) app.autoSave();
       });
       gridInputs.appendChild(chordInput);
@@ -846,7 +846,7 @@
       lyricInput.addEventListener('input', () => {
         line.content = lyricInput.value;
         lyricInput.classList.toggle('has-inline-bold', lyricInput.value.includes('**'));
-        if (app.renderPreview) app.renderPreview();
+        if (app.schedulePreview) app.schedulePreview();
         if (app.autoSave) app.autoSave();
       });
       if (line.content.includes('**')) lyricInput.classList.add('has-inline-bold');
@@ -884,7 +884,7 @@
       input.addEventListener('input', () => {
         line.content = input.value;
         input.classList.toggle('has-inline-bold', input.value.includes('**'));
-        if (app.renderPreview) app.renderPreview();
+        if (app.schedulePreview) app.schedulePreview();
         if (app.autoSave) app.autoSave();
       });
       if (line.content.includes('**')) input.classList.add('has-inline-bold');

@@ -599,13 +599,26 @@
     return app.getLibrarySaveState() !== 'saved';
   };
 
+  // Fingerprint of the Library copy of the current chart. Keyed on the raw
+  // Library string so any write (this window, another window, a migration)
+  // invalidates it, while repeated keystrokes skip parsing the whole Library.
+  let savedFingerprintCache = { raw: null, chartId: null, fingerprint: null };
+
+  function getSavedChartFingerprint(chartId) {
+    const raw = localStorage.getItem(STORAGE_CHARTS_KEY);
+    const cache = savedFingerprintCache;
+    if (cache.raw === raw && cache.chartId === chartId) return cache.fingerprint;
+    const chart = app.getSavedCharts().find(c => c.data.id === chartId);
+    const fingerprint = chart ? JSON.stringify(app.normalizeState(chart.data)) : null;
+    savedFingerprintCache = { raw, chartId, fingerprint };
+    return fingerprint;
+  }
+
   app.getLibrarySaveState = function() {
     if (!app.state || !app.state.id) return 'unsaved';
-    const chart = app.getSavedCharts().find(c => c.data.id === app.state.id);
-    if (!chart) return 'unsaved';
-    return JSON.stringify(app.normalizeState(app.state)) === JSON.stringify(app.normalizeState(chart.data))
-      ? 'saved'
-      : 'pending';
+    const savedFingerprint = getSavedChartFingerprint(app.state.id);
+    if (savedFingerprint === null) return 'unsaved';
+    return JSON.stringify(app.normalizeState(app.state)) === savedFingerprint ? 'saved' : 'pending';
   };
 
   app.saveChartVersion = function(name, notes) {

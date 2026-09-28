@@ -133,7 +133,7 @@
       el.addEventListener('blur', () => app.commitTextEdit());
       el.addEventListener('input', () => {
         app.state[prop] = el.value;
-        app.renderPreview();
+        app.schedulePreview();
         app.autoSave();
       });
     });
@@ -172,7 +172,7 @@
     const srClose = document.getElementById('search-close-btn');
     if (srClose) srClose.addEventListener('click', () => app.closeSearchReplace ? app.closeSearchReplace() : null);
     const srFind = document.getElementById('search-find-input');
-    if (srFind) srFind.addEventListener('input', () => app.highlightSearchPreview ? app.highlightSearchPreview() : null);
+    if (srFind) srFind.addEventListener('input', app.debounce(() => app.highlightSearchPreview?.(), app.SEARCH_DEBOUNCE_MS));
     const srRegex = document.getElementById('search-regex');
     if (srRegex) srRegex.addEventListener('change', () => app.highlightSearchPreview ? app.highlightSearchPreview() : null);
     const srCase = document.getElementById('search-case-sensitive');
