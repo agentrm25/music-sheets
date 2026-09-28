@@ -204,8 +204,9 @@
     document.body?.classList.toggle('light-mode', isLight);
     const toggle = document.getElementById('btn-dark-mode');
     if (toggle) {
-      toggle.textContent = '';
-      toggle.appendChild(app.icon(isLight ? 'sun' : 'moon'));
+      const iconSlot = toggle.querySelector('.theme-toggle-icon') || toggle;
+      iconSlot.textContent = '';
+      iconSlot.appendChild(app.icon(isLight ? 'sun' : 'moon'));
       toggle.setAttribute('aria-pressed', String(isLight));
       toggle.setAttribute('aria-label', 'Light mode');
       toggle.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';

@@ -518,17 +518,17 @@
     addBar.className = 'add-line-bar';
 
     const addChordBtn = createSmallBtn('+ Chord', () => app.addLineToSection(section, 'chord'), 'add-chord');
-    addChordBtn.style.color = 'var(--accent-chord)';
+    addChordBtn.classList.add('add-line-btn--chord');
     
     const addLyricBtn = createSmallBtn('+ Lyric', () => app.addLineToSection(section, 'lyric'), 'add-lyric');
     
     const addInstructionBtn = createSmallBtn('+ Instruction', () => app.addLineToSection(section, 'instruction'), 'add-instruction');
-    addInstructionBtn.style.color = 'var(--accent-intro)';
+    addInstructionBtn.classList.add('add-line-btn--instruction');
 
     const addBlankBtn = createSmallBtn('+ Blank', () => app.addLineToSection(section, 'blank', false), 'add-blank');
     
     const addGridBtn = createSmallBtn('+ Chord + Lyric', () => app.addLineToSection(section, 'grid'), 'add-grid');
-    addGridBtn.style.color = 'var(--accent-primary)';
+    addGridBtn.classList.add('add-line-btn--grid');
 
     addBar.appendChild(addChordBtn);
     addBar.appendChild(addLyricBtn);

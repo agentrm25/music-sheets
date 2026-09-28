@@ -287,3 +287,78 @@ test('every keyboard-reachable control shows the shared focus ring', () => {
   const coarse = balancedBlockAfter(css, /@media\s*\(pointer:\s*coarse\)/);
   assert.match(coarse, /min-height\s*:\s*44px/);
 });
+
+function tokenBlock(selector) {
+  const start = css.indexOf(`${selector} {`);
+  assert.ok(start >= 0, `missing ${selector} block`);
+  return css.slice(start, css.indexOf('\n}', start));
+}
+
+function readTokens(block) {
+  return Object.fromEntries([...block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(match => [match[1], match[2].trim()]));
+}
+
+function luminance(hex) {
+  const value = hex.replace('#', '');
+  const full = value.length === 3 ? value.split('').map(char => char + char).join('') : value;
+  const [r, g, b] = [0, 2, 4].map(index => parseInt(full.slice(index, index + 2), 16) / 255)
+    .map(channel => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a, b) {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+test('text tokens meet WCAG AA contrast on every surface in both themes', () => {
+  const dark = readTokens(tokenBlock(':root'));
+  const light = { ...dark, ...readTokens(tokenBlock('body.light-mode')) };
+  const texts = ['--text-primary', '--text-secondary', '--text-tertiary', '--text-accent', '--text-warning', '--text-success', '--text-danger'];
+  const surfaces = ['--bg-primary', '--bg-secondary', '--bg-surface', '--bg-elevated'];
+  for (const [theme, tokens] of [['dark', dark], ['light', light]]) {
+    for (const text of texts) {
+      for (const surface of surfaces) {
+        const ratio = contrast(tokens[text], tokens[surface]);
+        assert.ok(ratio >= 4.5, `${theme}: ${text} on ${surface} is ${ratio.toFixed(2)}:1`);
+      }
+    }
+  }
+  assert.doesNotMatch(css, /(?<![-\w])color:\s*var\(--accent-(?:primary|warning|success|danger)\)/, 'use --text-* tokens for coloured text');
+});
+
+test('theme-sensitive surfaces come from tokens rather than dark-only literals', () => {
+  const body = css.slice(css.indexOf('body.light-mode {'));
+  assert.doesNotMatch(body.slice(body.indexOf('\n}')), /rgba\(255,\s*255,\s*255/, 'white-alpha literals break light mode');
+  assert.match(balancedBlockAfter(css, /\n\.preview-panel\s*\{/), /background\s*:\s*var\(--bg-preview-well\)/);
+  const light = tokenBlock('body.light-mode');
+  for (const token of ['--hover-overlay', '--bg-preview-well', '--shadow-lg', '--scrollbar-thumb', '--select-chevron']) {
+    assert.match(light, new RegExp(`${token}\\s*:`), `light mode must override ${token}`);
+  }
+});
+
+test('stacking uses the semantic z-index scale', () => {
+  const values = [...css.matchAll(/z-index\s*:\s*([^;]+);/g)].map(match => match[1].trim());
+  assert.ok(values.length > 0);
+  values.forEach(value => assert.match(value, /^var\(--z-[\w-]+\)$/, `raw z-index ${value}`));
+  const root = readTokens(tokenBlock(':root'));
+  const order = ['--z-raised', '--z-sticky', '--z-dropdown', '--z-modal', '--z-modal-top', '--z-toast'].map(token => Number(root[token]));
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+});
+
+test('design tokens are all used and transitions name their properties', () => {
+  assert.doesNotMatch(css, /transition\s*:\s*all\b/);
+  const defined = Object.keys(readTokens(tokenBlock(':root')));
+  const everything = css + jsSources.map(({ source }) => source).join('\n');
+  defined.forEach(token => {
+    const uses = everything.split(`var(${token}`).length - 1;
+    assert.ok(uses > 0, `${token} is defined but never used`);
+  });
+});
+
+test('appearance toggle lives with app-wide commands, not in the preview header', () => {
+  const menu = html.slice(html.indexOf('id="toolbar-more"'), html.indexOf('</details>'));
+  assert.match(menu, /id="btn-dark-mode"/);
+  const previewHeader = html.slice(html.indexOf('class="preview-header"'), html.indexOf('id="preview-scroll"'));
+  assert.doesNotMatch(previewHeader, /btn-dark-mode/);
+});
