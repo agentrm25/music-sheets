@@ -228,3 +228,21 @@ test('QA Tauri config is fully isolated while preserving production capabilities
   assert.deepEqual(qa.app.security, production.app.security);
   assert.deepEqual(qa.bundle, production.bundle);
 });
+
+test('library card grid never lets scroll-clipped cards collapse below their content height', () => {
+  const grid = balancedBlockAfter(css, /\n\.library-card-grid\s*\{/);
+  assert.match(grid, /grid-auto-rows\s*:\s*max-content/);
+});
+
+test('line rows keep type, input, and actions on one compact row by default', () => {
+  const row = balancedBlockAfter(css, /\n\.line-item\s*\{/);
+  assert.match(row, /grid-template-areas\s*:\s*"handle type input bold actions"/);
+  assert.doesNotMatch(css, /\.line-type-indicator/);
+});
+
+test('sidebar shows a short Recent list that hands browsing to the Library view', () => {
+  assert.equal(openingTagById('library-search'), '');
+  assert.equal(openingTagById('library-sort'), '');
+  assert.match(openingTagById('recent-charts-list'), /^<ul\b/);
+  assert.match(elementTextById('btn-open-library'), /Open Library/);
+});

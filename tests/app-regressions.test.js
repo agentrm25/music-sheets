@@ -1599,34 +1599,6 @@ test('B17 collected-card Delete delegates to the confirmed request path', () => 
   }
 });
 
-test('B07 and B15 sidebar library entries delegate loading and support keyboard activation', () => {
-  const document = new FakeDocument();
-  const list = document.register('saved-charts-list');
-  document.register('library-search', 'input');
-  document.register('library-sort', 'select').value = 'date';
-  const environment = installEnvironment({ document });
-  try {
-    freshRequire('src-js/state.js');
-    const chart = savedEntry(environment.app, 'sidebar-chart', 'Sidebar Chart');
-    environment.app.state = environment.app.normalizeState(chart.data);
-    environment.app.getSavedCharts = () => [chart];
-    environment.app.saveCharts = () => {};
-    environment.app.showConfirm = () => assert.fail('Sidebar entry must delegate dirty decisions');
-    const requested = [];
-    environment.app.requestLoadChartFromLibrary = id => requested.push(id);
-    freshRequire('src-js/ui.js');
-
-    environment.app.renderSavedCharts();
-    const content = list.querySelector('.library-item-content');
-    assert.equal(content.getAttribute('role'), 'button');
-    assert.equal(content.tabIndex, 0);
-    content.dispatchEvent(makeEvent('keydown', { key: ' ' }));
-    assert.deepEqual(requested, ['sidebar-chart']);
-  } finally {
-    environment.restore();
-  }
-});
-
 test('B14 Settings opens and closes through the shared modal controller', () => {
   const document = new FakeDocument();
   const modal = document.register('settings-modal');
@@ -2011,6 +1983,146 @@ test('section options stay open and retain control focus after repeated size and
     assert.equal(section.repeat, 3);
     assert.equal(document.querySelector('.section-options').open, true);
     assert.equal(document.activeElement, document.querySelector('.section-repeat-input'));
+  } finally {
+    environment.restore();
+  }
+});
+
+function renderEditorEnvironment() {
+  const document = new FakeDocument();
+  document.register('editor-sections');
+  document.register('empty-state');
+  document.register('add-section-area');
+  const environment = installEnvironment({ document });
+  freshRequire('src-js/constants.js');
+  freshRequire('src-js/state.js');
+  freshRequire('src-js/editor.js');
+  environment.app.state = environment.app.createEmptyChart();
+  environment.app.pushUndo = () => {};
+  environment.app.updateStatusBar = () => {};
+  environment.app.commitChange = () => environment.app.renderEditor();
+  return { document, environment };
+}
+
+function lineControl(document, lineId, key) {
+  return document.querySelectorAll(`[data-focus-key="${key}"]`)
+    .find(element => element.closest('.line-item')?.dataset.lineId === lineId) || null;
+}
+
+test('editor re-renders keep focus on the same line control after bold and type changes', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const section = environment.app.createSection('verse');
+    const line = environment.app.createLine('lyric', 'Hello');
+    section.lines = [line];
+    environment.app.state.sections.push(section);
+    environment.app.renderEditor();
+
+    const bold = lineControl(document, line.id, 'bold');
+    bold.focus();
+    bold.click();
+    assert.equal(line.bold, true);
+    assert.ok(document.activeElement === lineControl(document, line.id, 'bold'), 'bold toggle keeps focus');
+
+    const typeSelect = lineControl(document, line.id, 'line-type');
+    typeSelect.focus();
+    typeSelect.value = 'chord';
+    typeSelect.dispatchEvent(makeEvent('change'));
+    assert.equal(line.type, 'chord');
+    assert.ok(document.activeElement === lineControl(document, line.id, 'line-type'), 'line type select keeps focus');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('deleting a line moves focus to the neighbouring line instead of the page body', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const section = environment.app.createSection('verse');
+    const first = environment.app.createLine('lyric', 'one');
+    const second = environment.app.createLine('lyric', 'two');
+    section.lines = [first, second];
+    environment.app.state.sections.push(section);
+    environment.app.renderEditor();
+
+    const deleteSecond = lineControl(document, second.id, 'delete-line');
+    deleteSecond.focus();
+    deleteSecond.click();
+    assert.deepEqual(section.lines.map(line => line.id), [first.id]);
+    assert.ok(document.activeElement === lineControl(document, first.id, 'delete-line'), 'focus moves to neighbouring delete button');
+
+    const deleteFirst = lineControl(document, first.id, 'delete-line');
+    deleteFirst.focus();
+    deleteFirst.click();
+    assert.equal(section.lines.length, 0);
+    assert.equal(document.activeElement.dataset.focusKey, 'add-lyric');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('deleting a section moves focus to the next section drag handle', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const intro = environment.app.createSection('intro');
+    const chorus = environment.app.createSection('chorus');
+    environment.app.state.sections.push(intro, chorus);
+    environment.app.showToast = () => {};
+    environment.app.renderEditor();
+
+    const deleteIntro = document.querySelectorAll('[data-focus-key="delete-section"]')[0];
+    deleteIntro.focus();
+    deleteIntro.click();
+    assert.deepEqual(environment.app.state.sections.map(section => section.id), [chorus.id]);
+    assert.equal(document.activeElement.dataset.focusKey, 'section-drag');
+    assert.equal(document.activeElement.closest('.section-card').dataset.sectionId, chorus.id);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('only sections added since the previous render play the entrance animation', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const intro = environment.app.createSection('intro');
+    environment.app.state.sections.push(intro);
+    environment.app.renderEditor();
+    assert.equal(document.querySelector('.section-card').classList.contains('is-new'), false);
+
+    const verse = environment.app.createSection('verse');
+    environment.app.state.sections.push(verse);
+    environment.app.renderEditor();
+    const cards = document.querySelectorAll('.section-card');
+    assert.equal(cards[0].classList.contains('is-new'), false);
+    assert.equal(cards[1].classList.contains('is-new'), true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('sidebar Recent list shows the five newest charts and opens them through the Library path', () => {
+  const document = new FakeDocument();
+  const list = document.register('recent-charts-list', 'ul');
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/state.js');
+    const charts = Array.from({ length: 7 }, (_, index) => {
+      const entry = savedEntry(environment.app, `chart-${index}`, `Chart ${index}`);
+      entry.savedAt = new Date(Date.UTC(2026, 0, index + 1)).toISOString();
+      return entry;
+    });
+    environment.app.getSavedCharts = () => charts.map(chart => ({ ...chart }));
+    const requested = [];
+    environment.app.requestLoadChartFromLibrary = id => requested.push(id);
+    freshRequire('src-js/ui.js');
+
+    environment.app.renderSavedCharts();
+    const buttons = list.querySelectorAll('button.recent-chart');
+    assert.equal(buttons.length, 5);
+    assert.equal(buttons[0].getAttribute('aria-label'), 'Open Chart 6');
+    assert.equal(list.children.every(child => child.tagName === 'LI'), true);
+    buttons[1].click();
+    assert.deepEqual(requested, ['chart-5']);
   } finally {
     environment.restore();
   }

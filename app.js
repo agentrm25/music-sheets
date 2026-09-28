@@ -337,11 +337,7 @@
       }
     });
 
-    // Library Sort/Search
-    const libSearch = document.getElementById('library-search');
-    if (libSearch) libSearch.addEventListener('input', () => app.renderSavedCharts());
-    const libSort = document.getElementById('library-sort');
-    if (libSort) libSort.addEventListener('change', () => app.renderSavedCharts());
+    document.getElementById('btn-open-library')?.addEventListener('click', () => app.showWorkspace('library'));
   }
 
   function populateTemplates() {

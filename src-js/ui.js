@@ -187,102 +187,42 @@
       : 'Choose Save to Library to keep the current chart in your Library.';
   };
 
+  const RECENT_CHART_LIMIT = 5;
+
+  // Sidebar "Recent" list: a shortcut to the newest charts. Browsing, sorting,
+  // favorites and deletion live in the Library view.
   app.renderSavedCharts = function() {
-    const list = document.getElementById('saved-charts-list');
+    const list = document.getElementById('recent-charts-list');
     if (!list) return;
 
-    let charts = app.getSavedCharts();
-    const searchInput = document.getElementById('library-search');
-    const sortSelect = document.getElementById('library-sort');
-    
-    if (searchInput && searchInput.value) {
-      const q = searchInput.value.toLowerCase();
-      charts = charts.filter(c => c.name.toLowerCase().includes(q) || (c.key && c.key.toLowerCase().includes(q)));
-    }
-
-    if (sortSelect) {
-      const sort = sortSelect.value;
-      charts.sort((a, b) => {
-        if (sort === 'date') return new Date(b.savedAt) - new Date(a.savedAt);
-        if (sort === 'alpha') return a.name.localeCompare(b.name);
-        if (sort === 'key') return (a.key || 'Z').localeCompare(b.key || 'Z');
-        return 0;
-      });
-    }
+    const recent = app.getSavedCharts()
+      .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+      .slice(0, RECENT_CHART_LIMIT);
 
     list.innerHTML = '';
-    if (charts.length === 0) {
-      list.innerHTML = '<div style="padding: 12px; opacity: 0.5;">No charts found.</div>';
-      return;
-    }
+    const empty = document.getElementById('recent-charts-empty');
+    if (empty) empty.hidden = recent.length > 0;
 
-    charts.forEach(chart => {
-      const item = document.createElement('div');
-      item.className = 'library-item';
-      
-      const content = document.createElement('div');
-      content.className = 'library-item-content';
-      content.setAttribute('role', 'button');
-      content.setAttribute('aria-label', `Open ${chart.name}`);
-      content.tabIndex = 0;
-      const openChart = () => app.requestLoadChartFromLibrary(chart.data.id);
-      content.onclick = openChart;
-      content.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openChart();
-      });
-      
-      const title = document.createElement('div');
-      title.className = 'library-item-title';
+    recent.forEach(chart => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'recent-chart';
+      button.setAttribute('aria-label', `Open ${chart.name}`);
+      button.addEventListener('click', () => app.requestLoadChartFromLibrary(chart.data.id));
+
+      const title = document.createElement('span');
+      title.className = 'recent-chart-title';
       title.textContent = chart.name;
-      
-      const meta = document.createElement('div');
-      meta.className = 'library-item-meta';
-      const d = new Date(chart.savedAt);
-      meta.textContent = `${chart.key ? chart.key + ' • ' : ''}${d.toLocaleDateString()}`;
-      
-      content.appendChild(title);
-      content.appendChild(meta);
-      
-      const actions = document.createElement('div');
-      actions.className = 'library-item-actions';
 
-      const favBtn = document.createElement('button');
-      favBtn.className = `favorite-btn ${chart.isFavorite ? 'favorited' : ''}`;
-      favBtn.innerHTML = chart.isFavorite ? '★' : '☆';
-      favBtn.title = chart.isFavorite ? 'Remove from favorites' : 'Add to favorites';
-      favBtn.setAttribute('aria-label', favBtn.title);
-      favBtn.onclick = (e) => {
-        e.stopPropagation();
-        chart.isFavorite = !chart.isFavorite;
-        const all = app.getSavedCharts();
-        const idx = all.findIndex(c => c.data.id === chart.data.id);
-        if (idx >= 0) {
-          all[idx].isFavorite = chart.isFavorite;
-          app.saveCharts(all);
-          app.renderSavedCharts();
-          if (app.renderFullLibrary) app.renderFullLibrary();
-        }
-      };
+      const meta = document.createElement('span');
+      meta.className = 'recent-chart-meta';
+      const savedOn = new Date(chart.savedAt).toLocaleDateString();
+      meta.textContent = chart.key ? `${chart.key} · ${savedOn}` : savedOn;
 
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn btn-sm btn-ghost';
-      delBtn.textContent = '✕';
-      delBtn.title = 'Delete';
-      delBtn.setAttribute('aria-label', `Delete ${chart.name}`);
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        app.showConfirm(`Delete "${chart.name}" permanently?`, () => {
-          app.deleteChartFromLibrary(chart.data.id);
-        });
-      };
-      
-      actions.appendChild(favBtn);
-      actions.appendChild(delBtn);
-
-      item.appendChild(content);
-      item.appendChild(actions);
+      button.appendChild(title);
+      button.appendChild(meta);
+      item.appendChild(button);
       list.appendChild(item);
     });
   };

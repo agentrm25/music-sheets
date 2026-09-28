@@ -188,20 +188,14 @@
         <textarea id="input-notes" class="form-input input-notes" placeholder="Band cues, setlist notes..." rows="3" aria-label="Arrangement notes"></textarea>
       </div>
 
-      <!-- Saved Charts -->
+      <!-- Recent Charts -->
       <div class="sidebar-section sidebar-section-flex">
-        <div class="sidebar-header sidebar-header-compact">Saved Charts</div>
-        <div class="library-search-row">
-          <input type="text" id="library-search" class="form-input library-search-input" placeholder="Search..." aria-label="Search saved charts">
-          <select id="library-sort" class="form-select library-sort-select" aria-label="Sort saved charts">
-            <option value="date">Newest</option>
-            <option value="alpha">A-Z</option>
-            <option value="key">Key</option>
-          </select>
+        <div class="sidebar-header sidebar-header-compact recent-charts-header">
+          <span id="recent-charts-title">Recent</span>
+          <button class="btn btn-sm btn-ghost" id="btn-open-library" type="button">Open Library</button>
         </div>
-        <div id="saved-charts-list" class="saved-charts-list">
-          No saved charts yet.
-        </div>
+        <ul id="recent-charts-list" class="recent-charts-list" aria-labelledby="recent-charts-title"></ul>
+        <p id="recent-charts-empty" class="recent-charts-empty" hidden>Charts you save to the Library appear here.</p>
       </div>
     </aside>
 
@@ -258,7 +252,7 @@
           </div>
         </div>
 
-        <div class="add-section-area" id="add-section-area" style="display: none;">
+        <div class="add-section-area" id="add-section-area" hidden>
           <button class="add-section-btn" id="btn-add-section-bottom">
             <span>+</span> Add section at end
           </button>

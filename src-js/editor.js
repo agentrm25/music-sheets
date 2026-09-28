@@ -24,8 +24,9 @@
     }
   };
 
-  function createActionBtn(icon, title, onClick) {
+  function createActionBtn(icon, title, onClick, focusKey) {
     const btn = document.createElement('button');
+    if (focusKey) btn.dataset.focusKey = focusKey;
     btn.type = 'button';
     btn.className = 'btn btn-ghost btn-icon btn-sm';
     btn.innerHTML = icon;
@@ -35,8 +36,9 @@
     return btn;
   }
 
-  function createSmallBtn(label, onClick) {
+  function createSmallBtn(label, onClick, focusKey) {
     const btn = document.createElement('button');
+    if (focusKey) btn.dataset.focusKey = focusKey;
     btn.type = 'button';
     btn.className = 'btn btn-sm btn-ghost';
     btn.textContent = label;
@@ -44,8 +46,9 @@
     return btn;
   }
 
-  function createLineActionBtn(icon, title, onClick) {
+  function createLineActionBtn(icon, title, onClick, focusKey) {
     const btn = document.createElement('button');
+    if (focusKey) btn.dataset.focusKey = focusKey;
     btn.type = 'button';
     btn.className = 'line-action-btn';
     btn.textContent = icon;
@@ -198,40 +201,84 @@
     });
   }
 
+  // Section ids present after the previous render; null until the first render
+  // so the initial load does not animate every card in.
+  let renderedSectionIds = null;
+
+  // Record which editor control has focus in terms that survive a full rebuild.
+  function captureEditorFocus(cards) {
+    const focused = document.activeElement;
+    const key = focused?.dataset?.focusKey;
+    const card = key ? focused.closest('.section-card') : null;
+    if (!card) return null;
+    const lineItem = focused.closest('.line-item');
+    const lineItems = lineItem ? Array.from(card.querySelectorAll('.line-item')) : [];
+    return {
+      key,
+      sectionId: card.dataset.sectionId,
+      sectionIndex: cards.indexOf(card),
+      lineId: lineItem?.dataset.lineId || null,
+      lineIndex: lineItem ? lineItems.indexOf(lineItem) : -1
+    };
+  }
+
+  function findFocusKey(scope, key) {
+    return scope?.querySelectorAll(`[data-focus-key="${key}"]`)[0] || null;
+  }
+
+  function restoreEditorFocus(snapshot, cards) {
+    if (!snapshot) return;
+    const card = cards.find(item => item.dataset.sectionId === snapshot.sectionId);
+    if (!card) {
+      // The section was deleted: continue from the section that took its place.
+      const next = cards[Math.min(snapshot.sectionIndex, cards.length - 1)];
+      (findFocusKey(next, 'section-drag') || document.getElementById('btn-start-chart'))?.focus();
+      return;
+    }
+    if (!snapshot.lineId) {
+      findFocusKey(card, snapshot.key)?.focus();
+      return;
+    }
+    const lineItems = Array.from(card.querySelectorAll('.line-item'));
+    const lineItem = lineItems.find(item => item.dataset.lineId === snapshot.lineId);
+    if (lineItem) {
+      findFocusKey(lineItem, snapshot.key)?.focus();
+      return;
+    }
+    // The line was deleted: focus the same control on its neighbour, or the add bar.
+    const neighbour = lineItems[Math.min(snapshot.lineIndex, lineItems.length - 1)];
+    (findFocusKey(neighbour, snapshot.key) || findFocusKey(card, 'add-lyric'))?.focus();
+  }
+
   app.renderEditor = function() {
     const editorSections = document.getElementById('editor-sections');
     const emptyState = document.getElementById('empty-state');
     const addSectionArea = document.getElementById('add-section-area');
     if (!editorSections) return;
 
-    const cards = editorSections.querySelectorAll('.section-card');
-    const openOptions = new Set(Array.from(cards)
+    const previousCards = Array.from(editorSections.querySelectorAll('.section-card'));
+    const openOptions = new Set(previousCards
       .filter(card => card.querySelector('.section-options')?.open)
       .map(card => card.dataset.sectionId));
-    const focused = document.activeElement;
-    const focusedOptions = focused?.closest('.section-options');
-    const focusedSection = focusedOptions?.closest('.section-card')?.dataset.sectionId;
-    const focusedLabel = focusedOptions ? focused.getAttribute('aria-label') : null;
-    cards.forEach(c => c.remove());
+    const focusSnapshot = captureEditorFocus(previousCards);
+    previousCards.forEach(card => {
+      card.resizeObserver?.disconnect();
+      card.remove();
+    });
 
-    if (app.state.sections.length === 0) {
-      emptyState.style.display = 'flex';
-      addSectionArea.style.display = 'none';
-    } else {
-      emptyState.style.display = 'none';
-      addSectionArea.style.display = 'flex';
+    const isEmpty = app.state.sections.length === 0;
+    emptyState.hidden = !isEmpty;
+    addSectionArea.hidden = isEmpty;
 
-      app.state.sections.forEach((section, sIdx) => {
-        const card = app.buildSectionCard(section, sIdx);
-        if (openOptions.has(section.id)) card.querySelector('.section-options').open = true;
-        editorSections.appendChild(card);
-        if (focusedSection === section.id && focusedLabel) {
-          const control = Array.from(card.querySelectorAll('[aria-label]'))
-            .find(element => element.getAttribute('aria-label') === focusedLabel);
-          control?.focus();
-        }
-      });
-    }
+    const cards = app.state.sections.map((section, sIdx) => {
+      const card = app.buildSectionCard(section, sIdx);
+      if (openOptions.has(section.id)) card.querySelector('.section-options').open = true;
+      if (renderedSectionIds && !renderedSectionIds.has(section.id)) card.classList.add('is-new');
+      editorSections.appendChild(card);
+      return card;
+    });
+    renderedSectionIds = new Set(app.state.sections.map(section => section.id));
+    restoreEditorFocus(focusSnapshot, cards);
     app.updateStatusBar();
   };
 
@@ -242,6 +289,7 @@
     const collapseToggle = document.createElement('button');
     collapseToggle.type = 'button';
     collapseToggle.className = 'section-collapse-toggle';
+    collapseToggle.dataset.focusKey = 'collapse';
     collapseToggle.innerHTML = '<span class="chevron">▾</span>';
     collapseToggle.title = 'Collapse/expand section';
     collapseToggle.setAttribute('aria-label', `${section.collapsed ? 'Expand' : 'Collapse'} section`);
@@ -254,12 +302,14 @@
     const dragHandle = document.createElement('button');
     dragHandle.type = 'button';
     dragHandle.className = 'section-drag-handle';
+    dragHandle.dataset.focusKey = 'section-drag';
     dragHandle.textContent = '✋';
     dragHandle.title = 'Drag section to reorder';
     dragHandle.setAttribute('aria-label', 'Drag section to reorder');
 
     const typeSelect = document.createElement('select');
     typeSelect.className = 'section-type-select';
+    typeSelect.dataset.focusKey = 'section-type';
     typeSelect.setAttribute('aria-label', 'Section type');
     Object.keys(app.SECTION_META).forEach(t => {
       const opt = document.createElement('option');
@@ -285,6 +335,7 @@
     if (section.type === 'verse') {
       verseNumInput = document.createElement('input');
       verseNumInput.className = 'verse-number-input';
+      verseNumInput.dataset.focusKey = 'verse-number';
       verseNumInput.type = 'text';
       verseNumInput.inputMode = 'numeric';
       verseNumInput.setAttribute('pattern', '[0-9]*');
@@ -309,6 +360,7 @@
 
     const fontScaleSelect = document.createElement('select');
     fontScaleSelect.className = 'section-font-scale-select';
+    fontScaleSelect.dataset.focusKey = 'font-scale';
     fontScaleSelect.setAttribute('aria-label', 'Section font size');
     for (let percent = 100; percent <= 200; percent += 10) {
       const option = document.createElement('option');
@@ -330,6 +382,7 @@
     if (section.type === 'custom') {
       customInput = document.createElement('input');
       customInput.className = 'form-input custom-label-input';
+      customInput.dataset.focusKey = 'custom-label';
       customInput.placeholder = 'Label…';
       customInput.value = section.customLabel || '';
       customInput.setAttribute('aria-label', 'Custom section label');
@@ -361,6 +414,7 @@
 
       const repeatInput = document.createElement('input');
       repeatInput.className = 'section-repeat-input';
+      repeatInput.dataset.focusKey = 'repeat';
       repeatInput.type = 'number';
       repeatInput.min = '1';
       repeatInput.max = '99';
@@ -399,20 +453,20 @@
           setTimeout(() => newCard.classList.remove('section-flash'), 1500);
         }
       }, 100);
-    });
+    }, 'duplicate');
 
     const collectBtn = createActionBtn('☆', 'Save section to collected', () => {
       if (app.openCollectSectionModal) {
         app.openCollectSectionModal(section.id);
       }
-    });
+    }, 'collect');
 
     const deleteBtn = createActionBtn('🗑', 'Delete section', () => {
       app.pushUndo();
       app.state.sections.splice(sIdx, 1);
       app.commitChange();
       app.showToast('Section deleted', 'info');
-    });
+    }, 'delete-section');
     deleteBtn.classList.add('delete');
 
     actions.appendChild(collectBtn);
@@ -424,6 +478,7 @@
     options.className = 'section-options';
     const summary = document.createElement('summary');
     summary.className = 'btn btn-sm btn-ghost';
+    summary.dataset.focusKey = 'options';
     summary.textContent = 'Options';
     summary.setAttribute('aria-label', `${app.getSectionDisplayTitle(section)} options`);
     const optionsContent = document.createElement('div');
@@ -462,17 +517,17 @@
     const addBar = document.createElement('div');
     addBar.className = 'add-line-bar';
 
-    const addChordBtn = createSmallBtn('+ Chord', () => app.addLineToSection(section, 'chord'));
+    const addChordBtn = createSmallBtn('+ Chord', () => app.addLineToSection(section, 'chord'), 'add-chord');
     addChordBtn.style.color = 'var(--accent-chord)';
     
-    const addLyricBtn = createSmallBtn('+ Lyric', () => app.addLineToSection(section, 'lyric'));
+    const addLyricBtn = createSmallBtn('+ Lyric', () => app.addLineToSection(section, 'lyric'), 'add-lyric');
     
-    const addInstructionBtn = createSmallBtn('+ Instruction', () => app.addLineToSection(section, 'instruction'));
+    const addInstructionBtn = createSmallBtn('+ Instruction', () => app.addLineToSection(section, 'instruction'), 'add-instruction');
     addInstructionBtn.style.color = 'var(--accent-intro)';
 
-    const addBlankBtn = createSmallBtn('+ Blank', () => app.addLineToSection(section, 'blank', false));
+    const addBlankBtn = createSmallBtn('+ Blank', () => app.addLineToSection(section, 'blank', false), 'add-blank');
     
-    const addGridBtn = createSmallBtn('+ Chord + Lyric', () => app.addLineToSection(section, 'grid'));
+    const addGridBtn = createSmallBtn('+ Chord + Lyric', () => app.addLineToSection(section, 'grid'), 'add-grid');
     addGridBtn.style.color = 'var(--accent-primary)';
 
     addBar.appendChild(addChordBtn);
@@ -517,6 +572,7 @@
       }
     });
     resizeObserver.observe(body);
+    card.resizeObserver = resizeObserver;
 
     bindSectionReorder(section, card, header.querySelector('.section-drag-handle'));
 
@@ -707,6 +763,7 @@
     const dragHandle = document.createElement('button');
     dragHandle.type = 'button';
     dragHandle.className = 'line-drag-handle';
+    dragHandle.dataset.focusKey = 'line-drag';
     dragHandle.dataset.lineId = line.id;
     dragHandle.dataset.sectionId = section.id;
     dragHandle.innerHTML = '⠿';
@@ -721,11 +778,9 @@
     });
     bindLineReorder(section, line, item, dragHandle);
 
-    const indicator = document.createElement('div');
-    indicator.className = `line-type-indicator ${line.type}${line.bold ? ' lyric-bold' : ''}`;
-
     const typeSelect = document.createElement('select');
     typeSelect.className = 'line-type-select';
+    typeSelect.dataset.focusKey = 'line-type';
     typeSelect.setAttribute('aria-label', 'Line type');
     [
       { value: 'chord', label: 'Chord' },
@@ -762,6 +817,7 @@
 
       const chordInput = document.createElement('input');
       chordInput.className = 'line-input grid-chords';
+      chordInput.dataset.focusKey = 'chords';
       chordInput.dataset.lineId = line.id;
       chordInput.type = 'text';
       chordInput.value = line.chords || '';
@@ -779,6 +835,7 @@
 
       const lyricInput = document.createElement('input');
       lyricInput.className = `line-input grid-lyric${line.bold ? ' lyric-bold' : ''}`;
+      lyricInput.dataset.focusKey = 'content';
       lyricInput.dataset.lineId = line.id;
       lyricInput.type = 'text';
       lyricInput.value = line.content;
@@ -816,6 +873,7 @@
     } else {
       input = document.createElement('input');
       input.className = `line-input ${line.type}${line.bold ? ' lyric-bold' : ''}`;
+      input.dataset.focusKey = 'content';
       input.dataset.lineId = line.id;
       input.value = line.content;
       input.placeholder = line.type === 'chord' ? 'e.g. Am, G, C, F' : line.type === 'instruction' ? 'e.g. [Drum fill]' : 'Lyrics… use **bold** for partial bold';
@@ -851,6 +909,7 @@
     if (line.type === 'lyric' || line.type === 'grid') {
       boldBtn = document.createElement('button');
       boldBtn.className = `bold-toggle ${line.bold ? 'active' : ''}`;
+      boldBtn.dataset.focusKey = 'bold';
       boldBtn.type = 'button';
       boldBtn.textContent = 'B';
       boldBtn.title = 'Toggle bold (emphasized lyric)';
@@ -871,20 +930,20 @@
       app.pushUndo();
       [section.lines[lIdx - 1], section.lines[lIdx]] = [section.lines[lIdx], section.lines[lIdx - 1]];
       app.commitChange();
-    });
+    }, 'move-up');
 
     const moveDownBtn = createLineActionBtn('↓', 'Move down', () => {
       if (lIdx >= section.lines.length - 1) return;
       app.pushUndo();
       [section.lines[lIdx], section.lines[lIdx + 1]] = [section.lines[lIdx + 1], section.lines[lIdx]];
       app.commitChange();
-    });
+    }, 'move-down');
 
     const deleteBtn = createLineActionBtn('×', 'Delete line', () => {
       app.pushUndo();
       section.lines.splice(lIdx, 1);
       app.commitChange();
-    });
+    }, 'delete-line');
     deleteBtn.classList.add('delete');
 
     actions.appendChild(moveUpBtn);
@@ -892,7 +951,6 @@
     actions.appendChild(deleteBtn);
 
     item.appendChild(dragHandle);
-    item.appendChild(indicator);
     item.appendChild(typeSelect);
     item.appendChild(inputsWrapper);
     if (boldBtn) item.appendChild(boldBtn);
