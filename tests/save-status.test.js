@@ -306,3 +306,30 @@ test('Library offers a Favorites filter so starring a chart does something', () 
   const favoritesIndex = labels.indexOf('Favorites');
   assert.equal(labels[favoritesIndex + 1], 1);
 });
+
+test('folder sync failures belong to the chart that failed and clear with the folder setting', async () => {
+  const env = createApp();
+  env.app.state.title = 'Chart A';
+  env.app.saveChartFileToDirectory = async () => { throw new Error('Permission denied'); };
+  await env.app.saveChartToLibrary();
+  assert.equal(env.libraryStatus(), 'Saved to Library · folder sync failed');
+
+  const chartA = env.app.state;
+  env.app.saveChartFileToDirectory = async () => null;
+  env.app.state = env.app.createEmptyChart();
+  env.app.state.title = 'Chart B';
+  await env.app.saveChartToLibrary({ silent: true });
+  env.app.saveChartFileToDirectory = async () => { throw new Error('Permission denied'); };
+  env.app.state = chartA;
+  await env.app.saveChartToLibrary({ silent: true });
+  env.app.state = JSON.parse(JSON.stringify(env.app.getSavedCharts().find(chart => chart.name === 'Chart B').data));
+  env.app.updateLibrarySaveStatus();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+
+  env.app.state = chartA;
+  env.app.updateLibrarySaveStatus();
+  assert.equal(env.libraryStatus(), 'Saved to Library · folder sync failed');
+  env.app.clearSaveDirectory();
+  env.app.updateLibrarySaveStatus();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+});

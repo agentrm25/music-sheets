@@ -2270,11 +2270,11 @@ test('PDF export shows a busy state and ignores repeat requests while running', 
     freshRequire('src-js/import-export.js');
     const first = environment.app.exportPDF();
     const second = environment.app.exportPDF();
-    assert.equal(button.disabled, true);
+    assert.equal(button.getAttribute('aria-disabled'), 'true');
     assert.equal(button.getAttribute('aria-busy'), 'true');
     await Promise.all([first, second]);
     assert.equal(toasts.filter(toast => toast.message === 'Generating PDF…').length, 1);
-    assert.equal(button.disabled, false);
+    assert.equal(button.getAttribute('aria-disabled'), null);
     assert.equal(button.getAttribute('aria-busy'), null);
   } finally {
     delete global.requestAnimationFrame;
@@ -2341,6 +2341,56 @@ test('pluralize counts', () => {
     freshRequire('src-js/constants.js');
     assert.equal(environment.app.pluralize(1, 'section'), '1 section');
     assert.equal(environment.app.pluralize(3, 'section'), '3 sections');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('a chart with only song details still counts as work worth confirming', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/state.js');
+    const empty = environment.app.createEmptyChart();
+    assert.equal(environment.app.chartHasContent(empty), false);
+    assert.equal(environment.app.chartHasContent({ ...empty, artist: 'Someone' }), true);
+    assert.equal(environment.app.chartHasContent({ ...empty, arrangementNotes: 'Capo up' }), true);
+    assert.equal(environment.app.chartHasContent({ ...empty, bpm: 92 }), true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('New chart confirms before discarding metadata-only work', () => {
+  const { environment } = bootApplication();
+  try {
+    const empty = environment.app.createEmptyChart();
+    environment.app.state = { ...empty, artist: 'Only an artist', key: 'G' };
+    environment.app.isCurrentChartDirty = () => true;
+    const confirms = [];
+    environment.app.showConfirm = (message, onConfirm, options) => confirms.push(options);
+    environment.document.getElementById('btn-new').click();
+    assert.equal(confirms.length, 1);
+    assert.equal(environment.app.state.artist, 'Only an artist');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('busy buttons stay focusable so keyboard users keep their place', async () => {
+  const document = new FakeDocument();
+  const button = document.register('btn-save-library', 'button');
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    let release;
+    const running = environment.app.runWithBusyButton('btn-save-library', () => new Promise(resolve => { release = resolve; }));
+    assert.equal(button.disabled, false, 'disabling a focused button drops focus');
+    assert.equal(button.getAttribute('aria-disabled'), 'true');
+    assert.equal(button.getAttribute('aria-busy'), 'true');
+    release();
+    await running;
+    assert.equal(button.getAttribute('aria-disabled'), null);
+    assert.equal(button.getAttribute('aria-busy'), null);
   } finally {
     environment.restore();
   }

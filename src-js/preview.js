@@ -416,8 +416,9 @@
     if (zoomLevel) zoomLevel.textContent = `${app.previewZoom}%`;
     const zoomIn = document.getElementById('btn-zoom-in');
     const zoomOut = document.getElementById('btn-zoom-out');
-    if (zoomIn) zoomIn.disabled = app.previewZoom >= app.ZOOM_MAX;
-    if (zoomOut) zoomOut.disabled = app.previewZoom <= app.ZOOM_MIN;
+    // aria-disabled keeps keyboard focus on the button when a limit is reached.
+    if (zoomIn) zoomIn.setAttribute('aria-disabled', String(app.previewZoom >= app.ZOOM_MAX));
+    if (zoomOut) zoomOut.setAttribute('aria-disabled', String(app.previewZoom <= app.ZOOM_MIN));
   };
 
 })(window.ChartApp = window.ChartApp || {});

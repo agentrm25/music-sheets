@@ -136,10 +136,16 @@
 
   // Clicking the backdrop dismisses dialogs marked data-backdrop-dismiss.
   // Decisions (confirm/alert) and pasted imports stay open until answered.
+  // A drag that starts inside the dialog (e.g. selecting text) and ends on
+  // the backdrop also produces a backdrop click, so require both ends.
   app.bindModalBackdrops = function() {
+    let pressStartedOnOverlay = false;
+    document.addEventListener('mousedown', event => {
+      pressStartedOnOverlay = Boolean(event.target?.classList?.contains('modal-overlay'));
+    });
     document.addEventListener('click', event => {
       const overlay = event.target;
-      if (!overlay?.classList?.contains('modal-overlay')) return;
+      if (!pressStartedOnOverlay || !overlay?.classList?.contains('modal-overlay')) return;
       if (overlay.dataset.backdropDismiss !== 'true') return;
       app.closeModal(overlay, 'backdrop');
     });
@@ -226,7 +232,7 @@
       pending: 'Library changes pending',
       saved: 'Saved to Library'
     };
-    const syncFailed = state === 'saved' && Boolean(app.folderSyncError);
+    const syncFailed = state === 'saved' && app.folderSyncError?.chartId === app.state.id;
     el.textContent = syncFailed ? `${labels.saved} · folder sync failed` : labels[state];
     el.dataset.saveState = syncFailed ? 'sync-failed' : state;
     el.title = state === 'saved'

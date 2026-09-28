@@ -2176,6 +2176,16 @@ body.section-reorder-active {
   transform: none;
 }
 
+/* Busy or at-limit controls stay focusable (aria-disabled, not disabled). */
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+
 /* ========================================================================
    COLLAPSIBLE SECTIONS
    ======================================================================== */

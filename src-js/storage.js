@@ -175,7 +175,7 @@
       status.textContent = 'Folder saving is available in the desktop app.';
       status.className = 'settings-status info';
     } else if (settings.saveDirectory && app.folderSyncError) {
-      status.textContent = `The last folder save failed: ${app.folderSyncError}`;
+      status.textContent = `The last folder save failed: ${app.folderSyncError.message}`;
       status.className = 'settings-status error';
     } else if (settings.saveDirectory) {
       status.textContent = 'Saved songs will also be written as JSON files.';
@@ -249,6 +249,7 @@
     try {
       const directory = await invoke('choose_save_directory');
       if (!directory) return;
+      app.folderSyncError = null;
       app.saveSettings(Object.assign(app.getSettings(), { saveDirectory: directory }));
       app.showToast('Save folder selected', 'success');
     } catch (e) {
@@ -258,6 +259,7 @@
   };
 
   app.clearSaveDirectory = function() {
+    app.folderSyncError = null;
     app.saveSettings(Object.assign(app.getSettings(), { saveDirectory: '' }));
     app.showToast('Save folder cleared', 'info');
   };
@@ -351,11 +353,14 @@
 
       try {
         const filePath = await app.saveChartFileToDirectory(entry);
-        app.folderSyncError = null;
+        if (app.folderSyncError?.chartId === entry.data.id) app.folderSyncError = null;
         if (!options.silent) app.showToast(filePath ? `"${name}" saved to folder` : `"${name}" saved`, 'success');
       } catch (fileErr) {
         console.error('Folder save failed:', fileErr);
-        app.folderSyncError = fileErr && fileErr.message ? fileErr.message : 'Unknown error';
+        app.folderSyncError = {
+          chartId: entry.data.id,
+          message: fileErr && fileErr.message ? fileErr.message : 'Unknown error'
+        };
         if (!options.silent) app.showToast(`"${name}" saved to Library; folder save failed`, 'error');
       }
       if (app.updateLibrarySaveStatus) app.updateLibrarySaveStatus();

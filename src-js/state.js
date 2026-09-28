@@ -102,6 +102,17 @@
     return line;
   };
 
+  // True when the chart differs from a fresh empty chart in any field,
+  // including song details such as artist, key, BPM, or notes.
+  app.chartHasContent = function(state) {
+    const withoutId = chart => {
+      const normalized = app.normalizeState(chart);
+      delete normalized.id;
+      return JSON.stringify(normalized);
+    };
+    return withoutId(state) !== withoutId(app.createEmptyChart());
+  };
+
   app.normalizeState = function(obj) {
     if (!obj || typeof obj !== 'object') {
       return app.createEmptyChart();

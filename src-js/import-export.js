@@ -142,7 +142,7 @@
   }
 
   app.requestImportJSON = function(file) {
-    const hasWork = Boolean(app.state && (app.state.title || (app.state.sections || []).length));
+    const hasWork = app.chartHasContent ? app.chartHasContent(app.state) : Boolean(app.state && app.state.title);
     if (hasWork && app.isCurrentChartDirty && app.isCurrentChartDirty()) {
       app.showConfirm(
         'Changes that aren’t saved to Library will be replaced. You can still Undo afterwards.',

@@ -42,14 +42,15 @@
 
   const busyButtons = new Set();
 
-  // Disable the triggering button while `task` runs and ignore re-entry
-  // (e.g. Cmd+E pressed twice while a PDF is still generating).
+  // Mark the triggering button busy while `task` runs and ignore re-entry
+  // (e.g. Cmd+E pressed twice while a PDF is still generating). Uses
+  // aria-disabled rather than disabled so a focused button keeps focus.
   app.runWithBusyButton = async function(buttonId, task) {
     if (busyButtons.has(buttonId)) return;
     busyButtons.add(buttonId);
     const button = typeof document !== 'undefined' ? document.getElementById(buttonId) : null;
     if (button) {
-      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
       button.setAttribute('aria-busy', 'true');
     }
     try {
@@ -57,7 +58,7 @@
     } finally {
       busyButtons.delete(buttonId);
       if (button) {
-        button.disabled = false;
+        button.removeAttribute('aria-disabled');
         button.removeAttribute('aria-busy');
       }
     }

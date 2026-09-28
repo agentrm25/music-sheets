@@ -91,7 +91,7 @@
         if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
         document.getElementById('btn-start-chart')?.focus();
       };
-      const hasWork = Boolean(app.state.title || app.state.sections.length);
+      const hasWork = app.chartHasContent(app.state);
       const isDirty = app.isCurrentChartDirty ? app.isCurrentChartDirty() : true;
       if (hasWork && isDirty) {
         app.showConfirm('Changes that aren’t saved to Library will be lost, and Undo history is cleared.', startNewChart, { title: 'Start a new chart?', confirmLabel: 'New chart' });
@@ -186,7 +186,10 @@
     const srClose = document.getElementById('search-close-btn');
     if (srClose) srClose.addEventListener('click', () => app.closeSearchReplace ? app.closeSearchReplace() : null);
     const srFind = document.getElementById('search-find-input');
-    if (srFind) srFind.addEventListener('input', app.debounce(() => app.highlightSearchPreview?.(), app.SEARCH_DEBOUNCE_MS));
+    // Skip the debounced highlight if the bar closed while it was pending.
+    if (srFind) srFind.addEventListener('input', app.debounce(() => {
+      if (app.isSearchReplaceOpen?.()) app.highlightSearchPreview?.();
+    }, app.SEARCH_DEBOUNCE_MS));
     const srRegex = document.getElementById('search-regex');
     if (srRegex) srRegex.addEventListener('change', () => app.highlightSearchPreview ? app.highlightSearchPreview() : null);
     const srCase = document.getElementById('search-case-sensitive');

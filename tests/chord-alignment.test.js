@@ -128,8 +128,8 @@ test('zoom controls share one range and disable at its ends', () => {
     'chart-wrapper': { style: {} },
     'preview-scroll': { clientWidth: 60, style: { paddingLeft: '0px', paddingRight: '0px' } },
     'zoom-level': { textContent: '' },
-    'btn-zoom-in': { disabled: false },
-    'btn-zoom-out': { disabled: false }
+    'btn-zoom-in': { setAttribute(name, value) { this[name] = value; } },
+    'btn-zoom-out': { setAttribute(name, value) { this[name] = value; } }
   };
   const app = createApp({
     document: { getElementById: id => elements[id] },
@@ -137,11 +137,11 @@ test('zoom controls share one range and disable at its ends', () => {
   });
   app.fitPreview();
   assert.equal(app.previewZoom, app.ZOOM_MIN, 'fit never shrinks below the manual minimum');
-  assert.equal(elements['btn-zoom-out'].disabled, true);
-  assert.equal(elements['btn-zoom-in'].disabled, false);
+  assert.equal(elements['btn-zoom-out']['aria-disabled'], 'true');
+  assert.equal(elements['btn-zoom-in']['aria-disabled'], 'false');
   app.previewAutoFit = false;
   app.previewZoom = app.ZOOM_MAX;
   app.applyZoom();
-  assert.equal(elements['btn-zoom-in'].disabled, true);
-  assert.equal(elements['btn-zoom-out'].disabled, false);
+  assert.equal(elements['btn-zoom-in']['aria-disabled'], 'true');
+  assert.equal(elements['btn-zoom-out']['aria-disabled'], 'false');
 });
