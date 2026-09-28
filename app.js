@@ -4,6 +4,7 @@
   // State
   app.state = app.createEmptyChart();
   app.previewZoom = 60;
+  app.previewAutoFit = true;
   
   // Undo system
   const undoManager = new app.UndoManager(50, (canUndo, canRedo) => {
@@ -45,14 +46,12 @@
   function init() {
     bindEvents();
     if (app.bindWorkflowEvents) app.bindWorkflowEvents();
+    if (app.bindWorkspaceEvents) app.bindWorkspaceEvents();
     populateTemplates();
     
     // Load from storage or start fresh
     if (!app.autoLoad()) {
       app.state = app.createEmptyChart();
-      app.state.sections.push(app.createSection('intro'));
-      app.state.sections.push(app.createSection('verse'));
-      app.state.sections.push(app.createSection('chorus'));
     }
 
     if (app.applyTheme && app.getSettings) app.applyTheme(app.getSettings().theme);
@@ -69,20 +68,22 @@
     
     undoManager.clear();
     app.pushUndo(); // Set initial undo state
+    app.autoSave(true);
   }
 
   function bindEvents() {
     // Toolbar
     document.getElementById('btn-new').addEventListener('click', () => {
-      app.showConfirm('Create a new chart? Unsaved changes will be lost.', () => {
+      app.showConfirm('Create a new chart? Save this chart to Library first if you want to keep it.', () => {
         app.pushUndo();
         app.state = app.createEmptyChart();
-        app.state.sections.push(app.createSection('intro'));
-        app.state.sections.push(app.createSection('verse'));
-        app.state.sections.push(app.createSection('chorus'));
         app.syncFormFromState();
         app.commitChange();
         undoManager.clear();
+        if (app.showWorkspace) app.showWorkspace('editor');
+        if (app.showEditorTab) app.showEditorTab('sections');
+        if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
+        document.getElementById('btn-start-chart')?.focus();
       });
     });
 
@@ -182,7 +183,7 @@
       app.pushUndo();
       const sel = document.getElementById('template-select');
       const tmpl = app.SECTION_TEMPLATES[sel.selectedIndex];
-      const sec = app.createSection(tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
+      const sec = app.createSection(sel.selectedIndex === 0 || tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
       if (sec.type === 'custom') {
         const customType = Object.keys(app.SECTION_META).find(k => tmpl.name.toLowerCase().includes(k));
         if (customType) sec.type = customType;
@@ -199,7 +200,7 @@
       app.pushUndo();
       const sel = document.getElementById('template-select');
       const tmpl = app.SECTION_TEMPLATES[sel.selectedIndex];
-      const sec = app.createSection(tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
+      const sec = app.createSection(sel.selectedIndex === 0 || tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
       if (sec.type === 'custom') {
         const customType = Object.keys(app.SECTION_META).find(k => tmpl.name.toLowerCase().includes(k));
         if (customType) sec.type = customType;
@@ -251,6 +252,7 @@
     });
 
     document.getElementById('btn-zoom-in').addEventListener('click', () => {
+      app.previewAutoFit = false;
       if (app.previewZoom < 200) {
         app.previewZoom += 10;
         document.getElementById('zoom-level').textContent = app.previewZoom + '%';
@@ -260,12 +262,18 @@
     });
 
     document.getElementById('btn-zoom-out').addEventListener('click', () => {
+      app.previewAutoFit = false;
       if (app.previewZoom > 50) {
         app.previewZoom -= 10;
         document.getElementById('zoom-level').textContent = app.previewZoom + '%';
         app.applyZoom();
         app.renderPreview(); // Re-render for page breaks
       }
+    });
+
+    document.getElementById('btn-zoom-fit')?.addEventListener('click', () => {
+      app.previewAutoFit = true;
+      if (app.fitPreview) app.fitPreview();
     });
 
     // Keyboard Shortcuts
@@ -342,7 +350,7 @@
     app.SECTION_TEMPLATES.forEach((tmpl, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = tmpl.name;
+      opt.textContent = i === 0 ? 'Blank verse' : tmpl.name;
       sel.appendChild(opt);
     });
   }

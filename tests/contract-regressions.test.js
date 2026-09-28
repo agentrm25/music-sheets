@@ -162,20 +162,35 @@ test('hover-revealed actions remain available to keyboard and touch users', () =
   assert.match(css, /:focus-visible[^{]*\{[^}]*outline\s*:/s);
 });
 
-test('toolbar actions scroll internally before the measured 1115px overflow threshold', () => {
-  const tablet = balancedBlockAfter(css, /@media\s*\(max-width:\s*1200px\)/);
-  assert.match(tablet, /\.toolbar-actions\s*\{[^}]*min-width\s*:\s*0[^}]*overflow-x\s*:\s*auto/s);
-  assert.match(tablet, /\.toolbar-actions\s*>\s*\*\s*\{[^}]*flex-shrink\s*:\s*0/s);
-  assert.match(tablet, /\.toolbar-actions\s*\{[^}]*padding-(?:inline-)?end\s*:/s);
+test('toolbar actions wrap and secondary commands remain available through a labelled disclosure', () => {
+  const actions = balancedBlockAfter(css, /\n\.toolbar-actions\s*\{/);
+  assert.match(actions, /flex-wrap\s*:\s*wrap/);
+  assert.match(actions, /min-width\s*:\s*0/);
+  assert.equal(attribute(openingTagById('toolbar-more'), 'class'), 'toolbar-overflow');
+  assert.match(html, /<summary[^>]*>More<\/summary>/);
+  for (const id of ['btn-new', 'btn-load', 'btn-export-json', 'btn-settings', 'btn-shortcuts']) {
+    assert.ok(openingTagById(id), `${id} must remain accessible`);
+  }
 });
 
-test('editor and search toolbars contain their own overflow at split-pane widths', () => {
+test('editor toolbar wraps while the search toolbar retains its overflow escape', () => {
   const editorToolbar = balancedBlockAfter(css, /\n\.editor-toolbar\s*\{/);
   const searchToolbar = balancedBlockAfter(css, /\n\.search-replace-bar\s*\{/);
-  assert.match(editorToolbar, /overflow-x\s*:\s*auto/);
+  assert.match(editorToolbar, /flex-wrap\s*:\s*wrap/);
   assert.match(searchToolbar, /overflow-x\s*:\s*auto/);
-  assert.match(css, /\.editor-toolbar\s*>\s*\*[^}]*flex-shrink\s*:\s*0/s);
+  assert.match(css, /\.editor-toolbar\s*>\s*\*[^}]*max-width\s*:\s*100%/s);
   assert.match(css, /\.search-replace-bar\s*>\s*\*[^}]*flex-shrink\s*:\s*0/s);
+});
+
+test('compact workspace provides named controls for details, editing and preview', () => {
+  for (const [panel, target] of [['details', 'sidebar'], ['editor', 'editor-panel'], ['preview', 'preview-panel']]) {
+    const button = openingTagById(`btn-panel-${panel}`);
+    assert.equal(attribute(button, 'aria-controls'), target);
+    assert.equal(attribute(button, 'aria-pressed'), String(panel === 'editor'));
+  }
+  assert.match(html, /src="\.\/src-js\/workspace.js"/);
+  assert.ok(openingTagById('btn-start-chart'));
+  assert.ok(openingTagById('btn-zoom-fit'));
 });
 
 test('legacy line identity seeds stay linear in section size', () => {

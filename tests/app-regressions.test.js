@@ -228,6 +228,13 @@ class FakeElement {
     return this.querySelectorAll(selector)[0] || null;
   }
 
+  closest(selector) {
+    for (let element = this; element; element = element.parentNode) {
+      if (element.nodeType === 1 && elementMatches(element, selector)) return element;
+    }
+    return null;
+  }
+
   scrollIntoView() {}
   scrollTo() {}
   getBoundingClientRect() { return { top: 0, left: 0, width: 100, height: 20 }; }
@@ -1875,6 +1882,135 @@ test('B05 JSON export uses a readable fallback filename for sanitized-empty titl
     environment.app.exportJSON();
 
     assert.equal(anchor.download, 'chart.json');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('workspace panel switching preserves chart content and updates accessible selection', () => {
+  const document = new FakeDocument();
+  const workspace = document.register('editor-view');
+  const buttons = ['details', 'editor', 'preview'].map(panel => {
+    const button = document.register(`btn-panel-${panel}`, 'button');
+    button.setAttribute('data-workspace-panel', panel);
+    button.dataset.workspacePanel = panel;
+    return button;
+  });
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/workspace.js');
+    const originalState = { title: 'Existing chart', sections: [{ id: 'keep-this' }] };
+    environment.app.state = originalState;
+    let fitCount = 0;
+    environment.app.previewAutoFit = true;
+    environment.app.fitPreview = () => { fitCount += 1; };
+    environment.app.bindWorkspaceEvents();
+    buttons[0].click();
+    assert.equal(workspace.dataset.panel, 'details');
+    assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+    assert.equal(buttons[1].getAttribute('aria-pressed'), 'false');
+    buttons[2].click();
+    assert.equal(workspace.dataset.panel, 'preview');
+    assert.equal(buttons[0].getAttribute('aria-pressed'), 'false');
+    assert.equal(buttons[2].getAttribute('aria-pressed'), 'true');
+    environment.app.showWorkspacePanel('invalid');
+    assert.equal(workspace.dataset.panel, 'preview');
+    assert.equal(environment.app.state, originalState);
+    assert.equal(fitCount, 2);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('starter creates an editable paired row without replacing existing sections', () => {
+  const document = new FakeDocument();
+  document.register('editor-view');
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/state.js');
+    freshRequire('src-js/workspace.js');
+    const originalSection = environment.app.createSection('intro');
+    environment.app.state = environment.app.createEmptyChart();
+    environment.app.state.sections.push(originalSection);
+    let undoCount = 0;
+    let commitCount = 0;
+    environment.app.pushUndo = () => { undoCount += 1; };
+    environment.app.commitChange = () => {
+      commitCount += 1;
+      const input = document.createElement('input');
+      input.className = 'line-input';
+      input.setAttribute('data-line-id', environment.app.state.sections.at(-1).lines[0].id);
+      document.body.appendChild(input);
+    };
+    environment.app.startChart();
+    assert.equal(environment.app.state.sections[0], originalSection);
+    const added = environment.app.state.sections[1];
+    assert.equal(added.type, 'verse');
+    assert.equal(added.lines.length, 1);
+    assert.equal(added.lines[0].type, 'grid');
+    assert.equal(undoCount, 1);
+    assert.equal(commitCount, 1);
+    assert.equal(document.activeElement.getAttribute('data-line-id'), added.lines[0].id);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('paired editor rows synchronize horizontal scrolling in both directions', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/state.js');
+    freshRequire('src-js/editor.js');
+    const section = environment.app.createSection('verse');
+    const line = environment.app.createLine('grid');
+    section.lines.push(line);
+    const item = environment.app.buildLineItem(section, line, 0, 0);
+    const chords = item.querySelector('.grid-chords');
+    const lyrics = item.querySelector('.grid-lyric');
+    chords.scrollLeft = 120;
+    chords.dispatchEvent(makeEvent('scroll'));
+    assert.equal(lyrics.scrollLeft, 120);
+    lyrics.scrollLeft = 40;
+    lyrics.dispatchEvent(makeEvent('scroll'));
+    assert.equal(chords.scrollLeft, 40);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('section options stay open and retain control focus after repeated size and repeat edits', () => {
+  const document = new FakeDocument();
+  document.register('editor-sections');
+  document.register('empty-state');
+  document.register('add-section-area');
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/state.js');
+    freshRequire('src-js/editor.js');
+    environment.app.state = environment.app.createEmptyChart();
+    const section = environment.app.createSection('chorus');
+    environment.app.state.sections.push(section);
+    environment.app.pushUndo = () => {};
+    environment.app.updateStatusBar = () => {};
+    environment.app.commitChange = () => environment.app.renderEditor();
+    environment.app.renderEditor();
+    document.querySelector('.section-options').open = true;
+    const size = document.querySelector('.section-font-scale-select');
+    size.focus();
+    size.value = '150';
+    size.dispatchEvent(makeEvent('change'));
+    assert.equal(section.fontScale, 150);
+    assert.equal(document.querySelector('.section-options').open, true);
+    assert.equal(document.activeElement, document.querySelector('.section-font-scale-select'));
+    const repeat = document.querySelector('.section-repeat-input');
+    repeat.focus();
+    repeat.value = '3';
+    repeat.dispatchEvent(makeEvent('change'));
+    assert.equal(section.repeat, 3);
+    assert.equal(document.querySelector('.section-options').open, true);
+    assert.equal(document.activeElement, document.querySelector('.section-repeat-input'));
   } finally {
     environment.restore();
   }

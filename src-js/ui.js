@@ -161,11 +161,30 @@
     const keyEl = document.getElementById('status-key');
     if (secEl) secEl.textContent = `${app.state.sections.length} section${app.state.sections.length !== 1 ? 's' : ''}`;
     if (keyEl) keyEl.textContent = app.state.key ? `Key: ${app.state.key}` : '-';
+    app.updateLibrarySaveStatus();
   };
 
-  app.updateAutoSaveStatus = function(text) {
+  app.updateAutoSaveStatus = function(text, state) {
     const el = document.getElementById('status-autosave');
-    if (el) el.textContent = text;
+    if (!el) return;
+    el.textContent = text;
+    if (state) el.dataset.saveState = state;
+  };
+
+  app.updateLibrarySaveStatus = function() {
+    const el = document.getElementById('status-library');
+    if (!el || !app.getLibrarySaveState) return;
+    const state = app.getLibrarySaveState();
+    const labels = {
+      unsaved: 'Not saved to Library',
+      pending: 'Library changes pending',
+      saved: 'Saved to Library'
+    };
+    el.textContent = labels[state];
+    el.dataset.saveState = state;
+    el.title = state === 'saved'
+      ? 'Your current chart matches the copy in Library.'
+      : 'Choose Save to Library to keep the current chart in your Library.';
   };
 
   app.renderSavedCharts = function() {
@@ -241,7 +260,7 @@
         const idx = all.findIndex(c => c.data.id === chart.data.id);
         if (idx >= 0) {
           all[idx].isFavorite = chart.isFavorite;
-          localStorage.setItem('chart-creator-saved', JSON.stringify(all));
+          app.saveCharts(all);
           app.renderSavedCharts();
           if (app.renderFullLibrary) app.renderFullLibrary();
         }
@@ -347,11 +366,13 @@
       searchContext = {
         opener: document.activeElement,
         workspace: app.activeWorkspace,
-        editorTab: app.activeEditorTab
+        editorTab: app.activeEditorTab,
+        panel: document.getElementById('editor-view')?.dataset.panel || 'editor'
       };
     }
     if (app.showWorkspace) app.showWorkspace('editor');
     if (app.showEditorTab) app.showEditorTab('sections');
+    if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
     bar.style.display = 'flex';
     const target = focusMode === 'replace'
       ? document.getElementById('search-replace-input')
@@ -369,6 +390,7 @@
     if (options.restore === false) return;
     if (context?.editorTab && app.showEditorTab) app.showEditorTab(context.editorTab);
     if (context?.workspace && app.showWorkspace) app.showWorkspace(context.workspace);
+    if (context?.panel && app.showWorkspacePanel) app.showWorkspacePanel(context.panel);
     if (context?.opener && typeof context.opener.focus === 'function') context.opener.focus();
   };
 

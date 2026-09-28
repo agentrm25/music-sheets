@@ -341,7 +341,41 @@
 
     const charts = getFilteredLibraryCharts();
     if (!charts.length) {
-      grid.appendChild(createEmptyMessage('No charts found', 'Save charts or change the current group/search filter.'));
+      if (app.getSavedCharts().length) {
+        const empty = createEmptyMessage('No matching charts', 'Try a different search or choose another group.');
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'btn btn-sm';
+        reset.textContent = 'Clear filters';
+        reset.addEventListener('click', () => {
+          if ($('full-library-search')) $('full-library-search').value = '';
+          app.librarySelectedGroupId = 'all';
+          app.renderFullLibrary();
+        });
+        empty.appendChild(reset);
+        grid.appendChild(empty);
+      } else {
+        const empty = createEmptyMessage('Your Library is empty', 'Use Save to Library to add your current draft. Draft autosave does not add charts here.');
+        const actions = document.createElement('div');
+        actions.className = 'empty-state-actions';
+        const save = document.createElement('button');
+        save.type = 'button';
+        save.className = 'btn btn-primary';
+        save.textContent = 'Save current draft';
+        save.addEventListener('click', () => $('btn-save-library')?.click());
+        const create = document.createElement('button');
+        create.type = 'button';
+        create.className = 'btn';
+        create.textContent = 'Create chart';
+        create.addEventListener('click', () => {
+          app.showWorkspace('editor');
+          $('btn-new')?.click();
+        });
+        actions.appendChild(save);
+        actions.appendChild(create);
+        empty.appendChild(actions);
+        grid.appendChild(empty);
+      }
       return;
     }
 

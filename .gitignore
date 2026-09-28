@@ -36,6 +36,9 @@ fixes_*
 
 # Local agent, QA evidence, and project outputs
 /.codex/
+/.playwright-mcp/
+/.impeccable/
+/.remember/
 /qa/evidence/
 .claude/
 claude/

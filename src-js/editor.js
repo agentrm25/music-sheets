@@ -205,6 +205,13 @@
     if (!editorSections) return;
 
     const cards = editorSections.querySelectorAll('.section-card');
+    const openOptions = new Set(Array.from(cards)
+      .filter(card => card.querySelector('.section-options')?.open)
+      .map(card => card.dataset.sectionId));
+    const focused = document.activeElement;
+    const focusedOptions = focused?.closest('.section-options');
+    const focusedSection = focusedOptions?.closest('.section-card')?.dataset.sectionId;
+    const focusedLabel = focusedOptions ? focused.getAttribute('aria-label') : null;
     cards.forEach(c => c.remove());
 
     if (app.state.sections.length === 0) {
@@ -216,7 +223,13 @@
 
       app.state.sections.forEach((section, sIdx) => {
         const card = app.buildSectionCard(section, sIdx);
+        if (openOptions.has(section.id)) card.querySelector('.section-options').open = true;
         editorSections.appendChild(card);
+        if (focusedSection === section.id && focusedLabel) {
+          const control = Array.from(card.querySelectorAll('[aria-label]'))
+            .find(element => element.getAttribute('aria-label') === focusedLabel);
+          control?.focus();
+        }
       });
     }
     app.updateStatusBar();
@@ -406,14 +419,30 @@
     actions.appendChild(dupeBtn);
     actions.appendChild(deleteBtn);
 
+    // Keep secondary controls available without crowding the section title.
+    const options = document.createElement('details');
+    options.className = 'section-options';
+    const summary = document.createElement('summary');
+    summary.className = 'btn btn-sm btn-ghost';
+    summary.textContent = 'Options';
+    summary.setAttribute('aria-label', `${app.getSectionDisplayTitle(section)} options`);
+    const optionsContent = document.createElement('div');
+    optionsContent.className = 'section-options-content';
+    optionsContent.appendChild(fontScaleControl);
+    if (repeatControl) optionsContent.appendChild(repeatControl);
+    collectBtn.textContent = 'Collect';
+    dupeBtn.textContent = 'Duplicate';
+    deleteBtn.textContent = 'Delete';
+    optionsContent.appendChild(actions);
+    options.appendChild(summary);
+    options.appendChild(optionsContent);
+
     header.appendChild(collapseToggle);
     header.appendChild(dragHandle);
     header.appendChild(typeSelect);
     if (verseNumInput) header.appendChild(verseNumInput);
     if (customInput) header.appendChild(customInput);
-    header.appendChild(fontScaleControl);
-    if (repeatControl) header.appendChild(repeatControl);
-    header.appendChild(actions);
+    header.appendChild(options);
 
     return header;
   }
@@ -737,6 +766,7 @@
       chordInput.type = 'text';
       chordInput.value = line.chords || '';
       chordInput.placeholder = 'e.g. Am  C  G  D';
+      chordInput.title = 'Use spaces to place chords above the matching lyric';
       chordInput.setAttribute('aria-label', `Line ${lIdx + 1} chords`);
       chordInput.addEventListener('focus', () => app.snapshotTextEdit());
       chordInput.addEventListener('blur', () => app.commitTextEdit());
@@ -764,6 +794,10 @@
       });
       if (line.content.includes('**')) lyricInput.classList.add('has-inline-bold');
       gridInputs.appendChild(lyricInput);
+
+      // Keep both editable rows on the same columns while scrolling long text.
+      chordInput.addEventListener('scroll', () => { lyricInput.scrollLeft = chordInput.scrollLeft; });
+      lyricInput.addEventListener('scroll', () => { chordInput.scrollLeft = lyricInput.scrollLeft; });
 
       lyricInput.addEventListener('keydown', e => {
         if (e.key === 'Enter') {

@@ -20,7 +20,7 @@ The Editor contains three panels:
 2. **Editor** contains the Sections, Versions, Info, and Collected tabs.
 3. **Preview** shows the chart's print-oriented appearance, page-break estimates, theme control, and zoom controls.
 
-At narrow window widths, toolbars scroll horizontally so all actions remain reachable.
+At narrow window widths, use **Song details**, **Edit chart**, and **Preview** to switch panels. Toolbars wrap, and **More** contains New chart, Open JSON, Export JSON, keyboard shortcuts, and Settings. Preview fits its panel automatically; use **Fit** to return to automatic fitting after a manual zoom.
 
 ### Library workspace
 
@@ -37,9 +37,9 @@ Deleting a chart from the library is permanent for local storage and requires co
 
 ## Create a chart
 
-Select **New Chart** in the top toolbar. Confirm the prompt if the current chart has unsaved changes.
+Select **More → New chart** in the top toolbar. Save the current chart to Library first if you want to keep it, then confirm the prompt.
 
-A new chart starts with Intro, Verse, and Chorus sections. Enter any useful metadata:
+A new chart starts empty. Select **Add chords & lyrics** to create a verse with a paired row, or **Import existing text**. Open **Song details** to enter any useful metadata:
 
 | Field | Behavior |
 | --- | --- |
@@ -52,15 +52,15 @@ A new chart starts with Intro, Verse, and Chorus sections. Enter any useful meta
 | Capo | Optional capo position. |
 | Arrangement notes | Public chart instructions shown in the preview and PDF. |
 
-Changes update the preview immediately and are autosaved after a short delay. The status bar reports **Saving…**, **Auto-saved**, or **Save failed**.
+Changes update the preview immediately and are autosaved after a short delay. The status bar reports **Saving draft…**, **Draft saved on this device**, or **Draft save failed**. A separate Library status says **Not saved to Library**, **Library changes pending**, or **Saved to Library**. Draft autosave does not update the Library copy; select **Save to Library** when you want to keep your latest changes there.
 
 ## Add and configure sections
 
-Choose a template from the section-template menu, then select **Add Section (Top)** or **Add Section (Bottom)**.
+Choose a template from the section-template menu, then select **Add section** to insert it at the top or **Add section at end**.
 
 Available templates are:
 
-- **Empty (default):** one chord row and one lyric row.
+- **Blank verse:** one chord row and one lyric row.
 - **Verse – 4 bar:** four chord-and-lyric rows.
 - **Chorus – 8 bar:** eight chord-and-lyric rows.
 - **Bridge – 4 bar:** four chord-and-lyric rows.
@@ -80,6 +80,8 @@ Each section card provides controls for:
 - **Collect:** stores a reusable copy in the Collected tab.
 - **Delete:** removes the section as an undoable chart edit.
 
+Open the section's **Options** disclosure for Text size, Repeat count, Collect, Duplicate, and Delete. These options stay open while you adjust them.
+
 Drag the section handle to reorder with a pointer. Keyboard users can focus the handle and press **Alt+Up Arrow** or **Alt+Down Arrow**.
 
 ## Add and edit lines
@@ -95,6 +97,8 @@ A section can contain five line types:
 | Blank | Intentional vertical spacing in the chart. |
 
 Use the buttons beneath a section to add a Chord, Lyric, Instruction, Chord + Lyric, or Blank row.
+
+In **Chord + Lyric** rows, use spaces to place chords above lyric characters. Both inputs use the same fixed-width font and scroll together. Preview and PDF preserve those columns, including verse-number offsets, and wrap long pairs together. Inline `**bold**` markers are formatting syntax and do not occupy columns in the output.
 
 Line behavior:
 
@@ -212,11 +216,11 @@ Review imported content before saving because chord detection is intentionally h
 
 ### Export
 
-Select **Export JSON**. The file contains the normalized current chart, including public chart fields and private Info fields. It does not contain the full library, groups catalog, collected-section catalog, favorites, or the chart's saved-version history.
+Select **More → Export JSON**. The file contains the normalized current chart, including public chart fields and private Info fields. It does not contain the full library, groups catalog, collected-section catalog, favorites, or the chart's saved-version history.
 
 ### Import
 
-Select **Load Chart from JSON** and choose a Chart Creator JSON file. The imported state replaces the current chart after validation and normalization. Export a backup before importing over important unsaved work.
+Select **More → Open JSON** and choose a Chart Creator JSON file. The imported state replaces the current chart after validation and normalization. Export a backup before importing over important unsaved work.
 
 JSON is the recommended transfer format between browser mode, desktop mode, devices, or storage profiles.
 

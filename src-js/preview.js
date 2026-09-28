@@ -82,10 +82,83 @@
     return info.isVerseFirst; // return whether we actually consumed the "first lyric" slot
   };
 
+  // Courier has the same 0.6-em character advance in the browser and bundled PDF font.
+  // Layout both rows as columns so centering, verse numbers, bold text and wrapping
+  // cannot move a chord away from the lyric position entered by the musician.
+  app.getGridLineLayout = function(line, section, isFirstLyricInVerse, availableWidth, baseFontSize) {
+    const info = app.getLyricRenderInfo(line, section, isFirstLyricInVerse);
+    const expandCells = segments => {
+      const cells = [];
+      segments.forEach(segment => {
+        Array.from(segment.text).forEach(character => {
+          const text = character === '\t' ? ' '.repeat(4 - cells.length % 4) : character;
+          Array.from(text).forEach(value => cells.push({ ...segment, text: value }));
+        });
+      });
+      return cells;
+    };
+    const prefix = Array.from(info.vNumText);
+    const chordCells = [
+      ...prefix.map(() => ({ text: ' ' })),
+      ...expandCells([{ text: line.chords || '' }])
+    ];
+    const lyricCells = [
+      ...prefix.map(text => ({ text, bold: true, verseNumber: true })),
+      ...expandCells(app.parseInlineBold(line.content).map(segment => ({
+        ...segment, bold: info.isBold || segment.bold
+      })))
+    ];
+    const columnCount = Math.max(chordCells.length, lyricCells.length, 1);
+    const width = Math.max(1, availableWidth);
+    const maxColumns = Math.max(1, Math.floor(width / (baseFontSize * 0.6 * 0.6)));
+    const isBoundary = (cells, index) => !cells[index] || !cells[index - 1] ||
+      /\s/.test(cells[index].text) || /\s/.test(cells[index - 1].text);
+    const rows = [];
+
+    for (let start = 0; start < columnCount;) {
+      const limit = Math.min(start + maxColumns, columnCount);
+      let end = limit;
+      if (limit < columnCount) {
+        // Prefer a shared word boundary; keep both rows on exactly the same columns.
+        const earliest = start + Math.max(1, Math.floor(maxColumns / 2));
+        while (end > earliest && !(isBoundary(chordCells, end) && isBoundary(lyricCells, end))) end--;
+        if (!(isBoundary(chordCells, end) && isBoundary(lyricCells, end))) end = limit;
+      }
+      const lyricSegments = [];
+      lyricCells.slice(start, end).forEach(cell => {
+        const previous = lyricSegments[lyricSegments.length - 1];
+        if (previous && previous.bold === cell.bold && previous.verseNumber === cell.verseNumber) {
+          previous.text += cell.text;
+        } else {
+          lyricSegments.push({ ...cell });
+        }
+      });
+      rows.push({
+        chords: chordCells.slice(start, end).map(cell => cell.text).join(''),
+        lyricSegments,
+        columns: end - start
+      });
+      start = end;
+    }
+
+    const columns = Math.max(...rows.map(row => row.columns));
+    return {
+      ...info,
+      rows,
+      columns,
+      fontSize: Math.min(baseFontSize, width / (columns * 0.6)),
+      hasChords: Boolean(line.chords),
+      hasLyrics: Boolean(line.content)
+    };
+  };
+
   app.renderPreview = function() {
     const paper = document.getElementById('chart-paper');
     if (!paper) return;
     paper.innerHTML = '';
+    const paperStyle = getComputedStyle(paper);
+    const gridWidth = (paper.clientWidth || 612) -
+      (parseFloat(paperStyle.paddingLeft) || 40) - (parseFloat(paperStyle.paddingRight) || 40);
 
     if (app.state.title) {
       const titleEl = document.createElement('div');
@@ -200,21 +273,34 @@
           instrEl.textContent = line.content;
           sectionEl.appendChild(instrEl);
         } else if (line.type === 'grid') {
+          const layout = app.getGridLineLayout(line, section, firstLyricInVerse, gridWidth, 17.6 * fontScale);
+          if (layout.isVerseFirst) firstLyricInVerse = false;
           const gridEl = document.createElement('div');
-          gridEl.className = 'chart-grid-line';
-          if (line.chords) {
-            const chordRow = document.createElement('div');
-            chordRow.className = 'chart-chord-line';
-            chordRow.textContent = line.chords;
-            gridEl.appendChild(chordRow);
-          }
-          if (line.content) {
-            const lyricRow = document.createElement('div');
-            if (app.renderPreviewLyricHTML(lyricRow, line, section, firstLyricInVerse)) {
-              firstLyricInVerse = false;
+          gridEl.className = 'chart-grid-line chart-aligned-grid';
+          gridEl.style.setProperty('--grid-font-size', `${layout.fontSize}px`);
+          layout.rows.forEach(row => {
+            const pair = document.createElement('div');
+            pair.className = 'chart-grid-pair';
+            if (layout.hasChords) {
+              const chordRow = document.createElement('div');
+              chordRow.className = 'chart-chord-line';
+              chordRow.textContent = row.chords;
+              pair.appendChild(chordRow);
             }
-            gridEl.appendChild(lyricRow);
-          }
+            if (layout.hasLyrics) {
+              const lyricRow = document.createElement('div');
+              lyricRow.className = layout.isBold ? 'chart-lyric-bold' : 'chart-lyric-line';
+              row.lyricSegments.forEach(segment => {
+                const span = document.createElement('span');
+                span.textContent = segment.text;
+                span.style.fontWeight = segment.bold ? '700' : '400';
+                if (segment.verseNumber) span.className = `chart-verse-number v${Math.min(layout.vNum, 5)}`;
+                lyricRow.appendChild(span);
+              });
+              pair.appendChild(lyricRow);
+            }
+            gridEl.appendChild(pair);
+          });
           sectionEl.appendChild(gridEl);
         }
       });
@@ -263,6 +349,7 @@
     const lines = paper.querySelectorAll(LINE_SELECTOR);
 
     lines.forEach(el => {
+      if (el.closest('.chart-aligned-grid')) return;
       const origWhiteSpace = el.style.whiteSpace;
       const origFontSize = parseFloat(getComputedStyle(el).fontSize);
       if (!origFontSize) return;
@@ -283,16 +370,35 @@
     });
   };
 
+  app.fitPreview = function() {
+    app.previewAutoFit = true;
+    app.applyZoom();
+  };
+
   app.applyZoom = function() {
     const chartPaper = document.getElementById('chart-paper');
     const chartWrapper = document.getElementById('chart-wrapper');
     if (!chartPaper || !chartWrapper) return;
+    if (app.previewAutoFit !== false) {
+      const scroll = document.getElementById('preview-scroll');
+      if (scroll && scroll.clientWidth > 0) {
+        const scrollStyle = getComputedStyle(scroll);
+        const availableWidth = scroll.clientWidth - (parseFloat(scrollStyle.paddingLeft) || 0) -
+          (parseFloat(scrollStyle.paddingRight) || 0);
+        const paperWidth = chartPaper.offsetWidth || parseFloat(getComputedStyle(chartPaper).width) || 612;
+        if (availableWidth > 0) {
+          app.previewZoom = Math.max(1, Math.min(100, Math.floor(availableWidth / paperWidth * 100)));
+        }
+      }
+    }
     const scale = app.previewZoom / 100;
     chartPaper.style.zoom = scale;
     chartPaper.style.transform = '';
     chartPaper.style.transformOrigin = '';
     chartWrapper.style.height = '';
     chartWrapper.style.width = '';
+    const zoomLevel = document.getElementById('zoom-level');
+    if (zoomLevel) zoomLevel.textContent = `${app.previewZoom}%`;
   };
 
 })(window.ChartApp = window.ChartApp || {});

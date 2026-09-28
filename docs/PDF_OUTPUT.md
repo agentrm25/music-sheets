@@ -8,7 +8,7 @@ The PDF is a compact, stage-readable song chart rather than conventional sheet m
 
 - US Letter portrait pages;
 - one centered reading column;
-- Helvetica text;
+- Helvetica text, with fixed-width Courier for Chord + Lyric pairs;
 - color cues for section types, chords, instructions, and verse numbers;
 - bracketed arrangement notes;
 - a small page count on every page;
@@ -24,7 +24,7 @@ The PDF is a compact, stage-readable song chart rather than conventional sheet m
 | Top margin | 24 pt |
 | Reserved footer area | 20 pt |
 | Content break boundary | 748 pt from the top |
-| Content alignment | Centered |
+| Content alignment | Centered; paired rows share a left origin within a centered block |
 | Background | Plain white |
 
 The footer is 9 pt gray Helvetica and displays `current / total`, such as `1 / 3`. It is positioned near the bottom-right corner. There is no running title, filename, date, or repeated section heading.
@@ -55,7 +55,7 @@ Empty metadata fields are omitted without placeholders.
 
 ## Base typography
 
-PDF text uses jsPDF's built-in Helvetica family. No custom font file is embedded.
+PDF text uses jsPDF's built-in Helvetica family, except Chord + Lyric pairs, which use built-in Courier. No custom font file is embedded.
 
 | Element | Base size | Style | Color |
 | --- | ---: | --- | --- |
@@ -65,8 +65,9 @@ PDF text uses jsPDF's built-in Helvetica family. No custom font file is embedded
 | Key and capo | 17.6 pt | Regular | Black |
 | Arrangement notes | 15.5 pt | Italic | `#444444` |
 | Section heading | 17.5 pt | Bold uppercase | Section color |
-| Chord | 16 pt | Bold | `#1a55d4` |
-| Lyric | 17.6 pt | Regular or bold | Black |
+| Standalone chord | 16 pt | Bold | `#1a55d4` |
+| Standalone lyric | 17.6 pt | Regular or bold | Black |
+| Chord + Lyric pair | 17.6 pt for both rows | Bold chords; regular or bold lyrics | `#1a55d4` chords; black lyrics |
 | Instruction | 15.5 pt | Italic | `#cc00cc` |
 | Page count | 9 pt | Regular | `#787878` |
 
@@ -76,7 +77,7 @@ Normal vertical advancement is 1.35 times the effective font size.
 
 Each section's **Text** control scales its heading, chords, lyrics, instructions, blank spacing, and section-leading space from 100% through 200% in 10% steps.
 
-This is a base-size multiplier. Long-line fitting can reduce an individual rendered line after the section scale is applied. Metadata and arrangement notes are not affected by a section's text setting.
+This is a base-size multiplier. Long-line fitting can reduce an individual rendered line after the section scale is applied. Chord + Lyric rows use a matched size and scale together. Metadata and arrangement notes are not affected by a section's text setting.
 
 ## Color language
 
@@ -99,7 +100,7 @@ This is a base-size multiplier. Long-line fitting can reduce an individual rende
 
 ## Arrangement notes
 
-Arrangement notes are centered between the metadata stack and first section. They are the only content type that intentionally wraps.
+Arrangement notes are centered between the metadata stack and first section. Their text wraps within the bracketed block.
 
 The notes use italic dark-gray text inside a square-bracket motif:
 
@@ -119,15 +120,15 @@ Custom sections use the configured custom label, uppercased. An empty custom lab
 
 ### Verse numbering
 
-The first rendered lyric in a verse receives a colored prefix such as `[2]` and is bold. Chord rows before that lyric do not consume the first-lyric position. For a Chord + Lyric row, the lyric portion receives the prefix.
+The first rendered lyric in a verse receives a colored prefix such as `[2]` and is bold. Chord rows before that lyric do not consume the first-lyric position. For a Chord + Lyric row, the lyric portion receives the prefix and the chord portion reserves the same leading space, preserving alignment with the lyric text.
 
 ### Chord rows
 
-Chord rows are centered, blue, and bold. The exporter uses proportional Helvetica, not a fixed-width chord grid. Spaces are preserved only to the extent supported by PDF text placement and font metrics.
+Standalone chord rows are centered, blue, and bold. They use proportional Helvetica. Their spaces do not establish shared columns with separate lyric rows.
 
 ### Lyric rows
 
-Lyrics are centered and black. The **B** line control makes the full lyric bold.
+Standalone lyrics are centered and black. The **B** line control makes the full lyric bold.
 
 Text between paired `**` markers is rendered bold. The markers are removed from output. If the entire line is already bold, marked text remains bold.
 
@@ -137,9 +138,11 @@ Instructions are centered, italic, and magenta. The exporter does not add punctu
 
 ### Chord + Lyric rows
 
-A combined row renders as a blue bold chord line followed by a black lyric line. There is no visible cell, border, or background.
+A combined row renders as a blue bold chord line followed by a black lyric line. Both use fixed-width Courier at the same effective size, with a shared left origin inside one centered block. There is no visible cell, border, or background.
 
-The two parts are paginated independently. A page break can therefore occur between the chord and lyric portions.
+Leading and repeated spaces are preserved, including leading spaces imported from plain text. Inline bold markers are removed before column positions are calculated, and bold text keeps the same character width.
+
+Long combined rows wrap at matching column positions as described below. Each chord row and its corresponding lyric row stay together on one page; a page break can occur between wrapped pairs.
 
 ### Blank rows
 
@@ -147,11 +150,11 @@ A Blank row emits no text. It advances vertically by one scaled lyric line heigh
 
 ## Long-line fitting
 
-Titles, metadata, section headings, chords, lyrics, and instructions are single-line elements. When a line exceeds the 532 pt content width, its font size is reduced proportionally.
+Titles, metadata, section headings, standalone chords, standalone lyrics, and instructions are single-line elements. When a line exceeds the 532 pt content width, its font size is reduced proportionally.
 
 Reduction stops at 60% of the line's base size after section scaling. A line that is still too wide at that floor can extend beyond the content area or page edge. These elements do not wrap.
 
-Arrangement notes are the only wrapping content type.
+Chord + Lyric rows fit as a unit. Their shared font size is reduced as needed, down to 60% of the scaled 17.6 pt base size. Longer pairs wrap at matching columns, preferably at a shared word boundary, so both parts remain within the content width. All wrapped pairs from that combined row retain the same size and left origin. Arrangement notes also wrap.
 
 ## Pagination
 
@@ -159,15 +162,15 @@ Before a section starts, the exporter budgets for:
 
 - the section-leading spacer;
 - the section heading, when present;
-- the first rendered line.
+- the first rendered line, or the first paired chunk when a Chord + Lyric row wraps.
 
 If that group does not fit, the section begins at the top margin of a new page and omits the leading spacer. This prevents an orphaned heading.
 
-After the first line, each row is evaluated independently. Consequences:
+After the first line, standalone rows are evaluated independently and each chord/lyric pair is evaluated as a unit. Consequences:
 
 - a section can continue on the next page;
 - its heading is not repeated;
-- a Chord + Lyric row can split between its two parts;
+- a long Chord + Lyric row can continue between wrapped pairs, with no page break inside a pair;
 - a large arrangement-note block is kept together and can overflow because it is not split across pages.
 
 ## Preview differences
@@ -177,7 +180,7 @@ The browser preview is an editing aid, not a PDF renderer.
 | Area | Preview | PDF |
 | --- | --- | --- |
 | Canvas | CSS paper with radius and shadow | Plain PDF page |
-| Typeface | Helvetica Neue, Helvetica, or Arial | Helvetica |
+| Typeface | Helvetica Neue, Helvetica, or Arial; Courier New or a monospace fallback for paired rows | Helvetica; Courier for paired rows |
 | Original key | Separate display line | Appended to the current-key line |
 | Instructions | Browser preview styling | `#cc00cc`, italic |
 | Page breaks | Estimated from browser layout | Explicit jsPDF measurement and page budgeting |
@@ -220,9 +223,9 @@ Examples:
 ## Known limitations
 
 - PDFs are not tagged for accessibility and have no bookmarks or semantic structure.
-- Very long single lines can overflow after reaching the 60% fitting floor.
+- Very long standalone lines can overflow after reaching the 60% fitting floor.
 - Arrangement-note blocks do not split across pages.
-- Chord and lyric parts of a combined row can split across pages.
+- Long combined rows can span pages between complete chord/lyric pairs.
 - Section headings are not repeated when a section continues.
 - Browser and PDF font metrics differ slightly.
 - The exporter supports US Letter only.

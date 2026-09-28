@@ -25,40 +25,39 @@
         Library
       </button>
       <div class="toolbar-divider"></div>
-      <button class="btn btn-sm" id="btn-new" title="New Chart">
-        <span>📄</span> New
+      <button class="btn btn-sm btn-primary" id="btn-save-library" title="Save to Library">
+        Save to Library
       </button>
-      <button class="btn btn-sm" id="btn-load" title="Load Chart from JSON">
-        <span>📂</span> Open
-      </button>
-      <button class="btn btn-sm" id="btn-save-library" title="Save to Library">
-        <span>💾</span> Save to Library
-      </button>
-      <button class="btn btn-sm" id="btn-export-json" title="Export Chart as JSON">
-        <span>📤</span> Export JSON
-      </button>
-      <div class="toolbar-divider"></div>
       <button class="btn btn-sm" id="btn-undo" title="Undo (Cmd+Z)" disabled>
         <span>↩</span> Undo
       </button>
       <button class="btn btn-sm" id="btn-redo" title="Redo (Cmd+Shift+Z)" disabled>
         <span>↪</span> Redo
       </button>
-      <div class="toolbar-divider"></div>
-      <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">
-        <span>❓</span>
+      <button class="btn btn-sm" id="btn-export-pdf" title="Export as PDF">
+        Export PDF
       </button>
-      <button class="btn btn-sm btn-icon" id="btn-settings" title="Settings" aria-label="Settings">
-        <span>⚙</span>
-      </button>
-      <button class="btn btn-sm btn-primary" id="btn-export-pdf" title="Export as PDF">
-        <span>📥</span> Export PDF
-      </button>
+      <details class="toolbar-overflow" id="toolbar-more">
+        <summary class="btn btn-sm">More</summary>
+        <div class="toolbar-menu">
+          <button class="btn btn-sm" id="btn-new" title="New Chart">New chart</button>
+          <button class="btn btn-sm" id="btn-load" title="Load Chart from JSON">Open JSON</button>
+          <button class="btn btn-sm" id="btn-export-json" title="Export Chart as JSON">Export JSON</button>
+          <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">Keyboard shortcuts</button>
+          <button class="btn btn-sm" id="btn-settings" title="Settings" aria-label="Settings">Settings</button>
+        </div>
+      </details>
     </div>
   </header>
 
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-content workspace-view active" id="editor-view">
+  <main class="main-content workspace-view active" id="editor-view" data-panel="editor">
+    <nav class="panel-navigation" aria-label="Chart workspace">
+      <button class="btn btn-sm" id="btn-panel-details" data-workspace-panel="details" aria-controls="sidebar" aria-pressed="false">Song details</button>
+      <button class="btn btn-sm active" id="btn-panel-editor" data-workspace-panel="editor" aria-controls="editor-panel" aria-pressed="true">Edit chart</button>
+      <button class="btn btn-sm" id="btn-panel-preview" data-workspace-panel="preview" aria-controls="preview-panel" aria-pressed="false">Preview</button>
+    </nav>
+    <div class="workspace-panels">
 
     <!-- ===== SIDEBAR (Metadata) ===== -->
     <aside class="sidebar" id="sidebar">
@@ -218,10 +217,10 @@
           </div>
         </div>
         <div class="editor-toolbar-left editor-tab-actions" data-editor-tab-actions="sections">
-          <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
-            <span>+</span> Add Section (Top)
-          </button>
           <select class="form-select template-select" id="template-select" title="Section template" aria-label="Section template"></select>
+          <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
+            <span>+</span> Add section
+          </button>
           <button class="btn btn-sm" id="btn-import-text" title="Import from pasted text">
             <span>📋</span> Import Text
           </button>
@@ -247,17 +246,21 @@
         <div class="editor-sections" id="editor-sections">
           <!-- Section cards rendered here by JS -->
           <div class="empty-state" id="empty-state">
-            <div class="empty-state-icon">🎶</div>
-            <div class="empty-state-title">No sections yet</div>
+            <div class="empty-state-kicker">Your next arrangement</div>
+            <div class="empty-state-title">Start with a line of music</div>
             <div class="empty-state-desc">
-              Click "Add Section" to start building your chart, or import text from an existing chart.
+              Add chords above your lyrics, then build your song one section at a time.
+            </div>
+            <div class="empty-state-actions">
+              <button class="btn btn-primary" id="btn-start-chart">Add chords &amp; lyrics</button>
+              <button class="btn btn-ghost" id="btn-start-import">Import existing text</button>
             </div>
           </div>
         </div>
 
         <div class="add-section-area" id="add-section-area" style="display: none;">
           <button class="add-section-btn" id="btn-add-section-bottom">
-            <span>+</span> Add Section (Bottom)
+            <span>+</span> Add section at end
           </button>
         </div>
       </div>
@@ -319,6 +322,7 @@
           <button class="btn btn-sm btn-ghost" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
           <span id="zoom-level" class="zoom-level-text">60%</span>
           <button class="btn btn-sm btn-ghost" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+          <button class="btn btn-sm btn-ghost" id="btn-zoom-fit" title="Fit preview to panel width">Fit</button>
         </div>
       </div>
       <div class="preview-scroll" id="preview-scroll">
@@ -329,7 +333,7 @@
         </div>
       </div>
     </aside>
-
+    </div>
   </main>
 
   <!-- ===== LIBRARY VIEW ===== -->
@@ -366,8 +370,9 @@
     <div class="status-bar-left">
       <div class="status-indicator">
         <div class="status-dot"></div>
-      <span id="status-autosave" role="status" aria-live="polite">Auto-saved</span>
+      <span id="status-autosave" role="status" aria-live="polite">Saving draft…</span>
       </div>
+      <span id="status-library" role="status" aria-live="polite">Not saved to Library</span>
     </div>
     <div class="status-bar-right">
       <span id="status-sections">0 sections</span>
@@ -520,6 +525,7 @@
 <script src="./src-js/import-export.js"></script>
 <script src="./src-js/ui.js"></script>
 <script src="./src-js/workflow.js"></script>
+<script src="./src-js/workspace.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

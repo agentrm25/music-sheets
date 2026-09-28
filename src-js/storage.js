@@ -145,7 +145,11 @@
   }
 
   function saveCharts(charts) {
-    localStorage.setItem(STORAGE_CHARTS_KEY, JSON.stringify(charts));
+    try {
+      localStorage.setItem(STORAGE_CHARTS_KEY, JSON.stringify(charts));
+    } finally {
+      if (app.updateLibrarySaveStatus) app.updateLibrarySaveStatus();
+    }
   }
 
   function refreshLibrarySurfaces() {
@@ -269,16 +273,18 @@
 
   app.autoSave = function(immediate = false) {
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+    if (app.updateLibrarySaveStatus) app.updateLibrarySaveStatus();
 
     const doSave = () => {
+      autoSaveTimeout = null;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(app.state));
-        if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Auto-saved');
+        if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Draft saved on this device', 'saved');
       } catch (e) {
         console.warn('Auto-save failed:', e);
-        if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Save failed');
+        if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Draft save failed', 'failed');
         if (e.name === 'QuotaExceededError' || e.code === 22) {
-          app.showToast('Autosave failed: Storage full', 'error');
+          app.showToast('Draft save failed: Storage full', 'error');
         }
       }
     };
@@ -286,7 +292,7 @@
     if (immediate) {
       doSave();
     } else {
-      if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Saving...');
+      if (app.updateAutoSaveStatus) app.updateAutoSaveStatus('Saving draft…', 'saving');
       autoSaveTimeout = setTimeout(doSave, 500);
     }
   };
@@ -374,7 +380,11 @@
       if (app.updateStatusBar) app.updateStatusBar();
       if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       if (app.showWorkspace) app.showWorkspace('editor');
-      document.getElementById('input-title')?.focus();
+      if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
+      if (app.showEditorTab) app.showEditorTab('sections');
+      const editTarget = document.querySelector('#editor-sections .section-card:not(.collapsed) .line-input') ||
+        document.getElementById('btn-add-section-top') || document.getElementById('input-title');
+      editTarget?.focus();
       app.autoSave(true);
       app.showToast(`Loaded "${chart.name}"`, 'info');
     }
@@ -586,10 +596,16 @@
   };
 
   app.isCurrentChartDirty = function() {
-    if (!app.state || !app.state.id) return true;
+    return app.getLibrarySaveState() !== 'saved';
+  };
+
+  app.getLibrarySaveState = function() {
+    if (!app.state || !app.state.id) return 'unsaved';
     const chart = app.getSavedCharts().find(c => c.data.id === app.state.id);
-    if (!chart) return true;
-    return JSON.stringify(app.normalizeState(app.state)) !== JSON.stringify(app.normalizeState(chart.data));
+    if (!chart) return 'unsaved';
+    return JSON.stringify(app.normalizeState(app.state)) === JSON.stringify(app.normalizeState(chart.data))
+      ? 'saved'
+      : 'pending';
   };
 
   app.saveChartVersion = function(name, notes) {

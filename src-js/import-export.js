@@ -58,12 +58,12 @@
       }
 
       if (CHORD_LINE_RE.test(trimmed)) {
-        currentSection.lines.push(app.createLine('chord', trimmed));
+        currentSection.lines.push(app.createLine('chord', rawLine.trimEnd()));
       } else {
         if (/^\(.+\)$/.test(trimmed) || /^Capo|^Key:|^BPM/i.test(trimmed)) {
           currentSection.lines.push(app.createLine('instruction', trimmed));
         } else {
-          currentSection.lines.push(app.createLine('lyric', trimmed));
+          currentSection.lines.push(app.createLine('lyric', rawLine.trimEnd()));
         }
       }
     }
@@ -352,10 +352,8 @@
           } else if (firstRenderedLine.type === 'instruction') {
             firstLineHeight = getScaledFontSize(firstRenderedLine.content, scaledInstructionFontSize) * lineHeightMultiplier;
           } else if (firstRenderedLine.type === 'grid') {
-            let h = 0;
-            if (firstRenderedLine.chords) h += getScaledFontSize(firstRenderedLine.chords, scaledChordFontSize) * lineHeightMultiplier;
-            if (firstRenderedLine.content) h += getScaledFontSize(info.fullText, scaledLyricFontSize) * lineHeightMultiplier;
-            firstLineHeight = h;
+            const layout = app.getGridLineLayout(firstRenderedLine, section, true, usableWidth, scaledLyricFontSize);
+            firstLineHeight = (Number(layout.hasChords) + Number(layout.hasLyrics)) * layout.fontSize * lineHeightMultiplier;
           }
         } else {
           firstLineHeight = scaledLyricFontSize * lineHeightMultiplier;
@@ -435,44 +433,34 @@
             pdf.text(line.content, pageWidth / 2, y + size, { align: 'center' });
             y += height;
           } else if (line.type === 'grid') {
-            if (line.chords) {
-              const size = getScaledFontSize(line.chords, scaledChordFontSize);
-              const height = size * lineHeightMultiplier;
-              checkPageBreak(height);
-              pdf.setFont('helvetica', 'bold');
+            const layout = app.getGridLineLayout(line, section, firstLyricInVerse, usableWidth, scaledLyricFontSize);
+            if (layout.isVerseFirst) firstLyricInVerse = false;
+            const size = layout.fontSize;
+            const height = size * lineHeightMultiplier;
+            const startX = (pageWidth - layout.columns * size * 0.6) / 2;
+
+            layout.rows.forEach(row => {
+              // Never separate a chord row from its lyric when a page ends.
+              checkPageBreak(height * (Number(layout.hasChords) + Number(layout.hasLyrics)));
               pdf.setFontSize(size);
-              setColor('#1a55d4');
-              pdf.text(line.chords, pageWidth / 2, y + size, { align: 'center' });
-              y += height;
-            }
-
-            if (line.content) {
-              const info = app.getLyricRenderInfo(line, section, firstLyricInVerse);
-              if (info.isVerseFirst) firstLyricInVerse = false;
-
-              const size = getScaledFontSize(info.fullText, scaledLyricFontSize);
-              const height = size * lineHeightMultiplier;
-              checkPageBreak(height);
-              pdf.setFontSize(size);
-
-              if (info.isVerseFirst) {
-                const cleanFullText = info.fullText.replace(/\*\*/g, '');
-                const totalW = pdf.getTextWidth(cleanFullText);
-                let startX = (pageWidth - totalW) / 2;
-
-                pdf.setFont('helvetica', 'bold');
-                setColor(info.vNumColor);
-                pdf.text(info.vNumText, startX, y + size);
-                startX += pdf.getTextWidth(info.vNumText);
-
-                setColor('#000000');
-                drawTextWithInlineBold(line.content, startX, y + size, true, 'left');
-              } else {
-                pdf.setTextColor(0, 0, 0);
-                drawTextWithInlineBold(line.content, pageWidth / 2, y + size, info.isBold, 'center');
+              if (layout.hasChords) {
+                pdf.setFont('courier', 'bold');
+                setColor('#1a55d4');
+                pdf.text(row.chords, startX, y + size);
+                y += height;
               }
-              y += height;
-            }
+              if (layout.hasLyrics) {
+                let x = startX;
+                row.lyricSegments.forEach(segment => {
+                  pdf.setFont('courier', segment.bold ? 'bold' : 'normal');
+                  setColor(segment.verseNumber ? layout.vNumColor : '#000000');
+                  pdf.text(segment.text, x, y + size);
+                  x += pdf.getTextWidth(segment.text);
+                });
+                y += height;
+              }
+            });
+            pdf.setFont('helvetica', 'normal');
           }
         });
       });
