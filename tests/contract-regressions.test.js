@@ -74,7 +74,7 @@ test('all eight modal overlays expose stable accessible names', () => {
     assert.ok(openingTagById(labelledBy), `${id} references missing label #${labelledBy}`);
   }
 
-  const titles = [...html.matchAll(/<h3\b(?=[^>]*\bclass=["'][^"']*\bmodal-title\b[^"']*["'])[^>]*>/gi)]
+  const titles = [...html.matchAll(/<h2\b(?=[^>]*\bclass=["'][^"']*\bmodal-title\b[^"']*["'])[^>]*>/gi)]
     .map(match => match[0]);
   assert.equal(titles.length, 8);
   titles.forEach(title => assert.ok(attribute(title, 'id'), 'Every modal title needs a stable id'));
@@ -245,4 +245,45 @@ test('sidebar shows a short Recent list that hands browsing to the Library view'
   assert.equal(openingTagById('library-sort'), '');
   assert.match(openingTagById('recent-charts-list'), /^<ul\b/);
   assert.match(elementTextById('btn-open-library'), /Open Library/);
+});
+
+const jsSources = ['app.js', ...fs.readdirSync(path.join(root, 'src-js')).map(file => `src-js/${file}`)]
+  .map(file => ({ file, source: fs.readFileSync(path.join(root, file), 'utf8') }));
+
+test('motion respects prefers-reduced-motion', () => {
+  const reduced = balancedBlockAfter(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(reduced, /animation-duration\s*:/);
+  assert.match(reduced, /transition-duration\s*:/);
+  assert.match(reduced, /scroll-behavior\s*:\s*auto/);
+  const smoothScrolls = jsSources.filter(({ source }) => /behavior:\s*'smooth'/.test(source));
+  assert.deepEqual(smoothScrolls.map(({ file }) => file), [], 'use app.scrollBehavior() instead of hard-coded smooth scrolling');
+});
+
+test('controls use the SVG icon set instead of emoji or text glyphs', () => {
+  const glyphs = /[✋⠿📋🌙☀☆★🗑↩↪✕↑↓▾✓ℹ🎵＋]/u;
+  assert.doesNotMatch(html, glyphs, 'index.html');
+  jsSources.forEach(({ file, source }) => assert.doesNotMatch(source, glyphs, file));
+  for (const name of ['undo', 'redo', 'close', 'grip', 'star', 'star-filled', 'arrow-up', 'arrow-down', 'chevron-down', 'sun', 'moon', 'check', 'alert', 'info', 'plus', 'download']) {
+    assert.ok(html.includes(`<symbol id="icon-${name}"`), `missing icon-${name}`);
+  }
+});
+
+test('landmarks and headings give the editor a navigable outline', () => {
+  const editorView = html.slice(html.indexOf('id="editor-view"'), html.indexOf('id="library-view"'));
+  assert.match(editorView, /<h1\b[^>]*class="[^"]*visually-hidden/);
+  assert.match(editorView, /<h2\b[^>]*id="song-details-heading"/);
+  assert.match(editorView, /<h2\b[^>]*id="preview-heading"/);
+  const asides = [...html.matchAll(/<aside\b[^>]*>/gi)].map(match => match[0]);
+  asides.forEach(tag => assert.ok(attribute(tag, 'aria-labelledby') || attribute(tag, 'aria-label'), `${tag} needs a name`));
+  assert.doesNotMatch(html, /<h3\b[^>]*class="modal-title"/);
+  assert.match(css, /\.visually-hidden\s*\{/);
+});
+
+test('every keyboard-reachable control shows the shared focus ring', () => {
+  const block = css.slice(css.indexOf('button:focus-visible,'));
+  for (const selector of ['summary:focus-visible', '.section-type-select:focus-visible', 'input[type="checkbox"]:focus-visible', '.recent-chart:focus-visible']) {
+    assert.ok(block.includes(selector), `${selector} missing from focus ring rule`);
+  }
+  const coarse = balancedBlockAfter(css, /@media\s*\(pointer:\s*coarse\)/);
+  assert.match(coarse, /min-height\s*:\s*44px/);
 });

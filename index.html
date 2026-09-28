@@ -8,6 +8,25 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true" focusable="false">
+  <symbol id="icon-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="icon-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="icon-grip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="icon-star-filled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="icon-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></symbol>
+  <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+</svg>
 
 <div class="app-container">
 
@@ -29,10 +48,10 @@
         Save to Library
       </button>
       <button class="btn btn-sm" id="btn-undo" title="Undo (Cmd+Z)" disabled>
-        <span>↩</span> Undo
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-undo"/></svg> Undo
       </button>
       <button class="btn btn-sm" id="btn-redo" title="Redo (Cmd+Shift+Z)" disabled>
-        <span>↪</span> Redo
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-redo"/></svg> Redo
       </button>
       <button class="btn btn-sm" id="btn-export-pdf" title="Export as PDF">
         Export PDF
@@ -52,6 +71,7 @@
 
   <!-- ===== MAIN CONTENT ===== -->
   <main class="main-content workspace-view active" id="editor-view" data-panel="editor">
+    <h1 class="visually-hidden">Chart editor</h1>
     <nav class="panel-navigation" aria-label="Chart workspace">
       <button class="btn btn-sm" id="btn-panel-details" data-workspace-panel="details" aria-controls="sidebar" aria-pressed="false">Song details</button>
       <button class="btn btn-sm active" id="btn-panel-editor" data-workspace-panel="editor" aria-controls="editor-panel" aria-pressed="true">Edit chart</button>
@@ -60,8 +80,8 @@
     <div class="workspace-panels">
 
     <!-- ===== SIDEBAR (Metadata) ===== -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">Song Details</div>
+    <aside class="sidebar" id="sidebar" aria-labelledby="song-details-heading">
+      <h2 class="sidebar-header" id="song-details-heading">Song details</h2>
 
       <div class="sidebar-section">
         <div class="form-group">
@@ -191,10 +211,10 @@
       <!-- Recent Charts -->
       <div class="sidebar-section sidebar-section-flex">
         <div class="sidebar-header sidebar-header-compact recent-charts-header">
-          <span id="recent-charts-title">Recent</span>
+          <h3 class="sidebar-subheading" id="recent-charts-title">Recent</h3>
           <button class="btn btn-sm btn-ghost" id="btn-open-library" type="button">Open Library</button>
         </div>
-        <ul id="recent-charts-list" class="recent-charts-list" aria-labelledby="recent-charts-title"></ul>
+        <ul id="recent-charts-list" class="recent-charts-list" role="list" aria-labelledby="recent-charts-title"></ul>
         <p id="recent-charts-empty" class="recent-charts-empty" hidden>Charts you save to the Library appear here.</p>
       </div>
     </aside>
@@ -213,15 +233,15 @@
         <div class="editor-toolbar-left editor-tab-actions" data-editor-tab-actions="sections">
           <select class="form-select template-select" id="template-select" title="Section template" aria-label="Section template"></select>
           <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
-            <span>+</span> Add section
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section
           </button>
           <button class="btn btn-sm" id="btn-import-text" title="Import from pasted text">
-            <span>📋</span> Import Text
+            Import text
           </button>
         </div>
         <div class="editor-toolbar-left editor-tab-actions hidden" data-editor-tab-actions="versions">
           <button class="btn btn-sm btn-primary" id="btn-save-version" title="Save a manual version snapshot">
-            <span>＋</span> Save Version
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Save version
           </button>
         </div>
       </div>
@@ -231,10 +251,10 @@
         <div class="search-replace-bar" id="search-replace-bar" style="display:none;">
           <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…" aria-label="Find text">
           <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…" aria-label="Replacement text">
-          <label class="search-option" title="Case sensitive"><input type="checkbox" id="search-case-sensitive" aria-label="Case sensitive"> Aa</label>
-          <label class="search-option" title="Use regex"><input type="checkbox" id="search-regex" aria-label="Use regular expressions"> .*</label>
+          <label class="search-option" for="search-case-sensitive" title="Match case"><input type="checkbox" id="search-case-sensitive"> <span aria-hidden="true">Aa</span><span class="visually-hidden">Match case</span></label>
+          <label class="search-option" for="search-regex" title="Use regular expressions"><input type="checkbox" id="search-regex"> <span aria-hidden="true">.*</span><span class="visually-hidden">Use regular expressions</span></label>
           <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace All</button>
-          <button class="btn btn-sm btn-ghost" id="search-close-btn" aria-label="Close find and replace">✕</button>
+          <button class="btn btn-sm btn-ghost" id="search-close-btn" aria-label="Close find and replace"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg></button>
         </div>
 
         <div class="editor-sections" id="editor-sections">
@@ -254,7 +274,7 @@
 
         <div class="add-section-area" id="add-section-area" hidden>
           <button class="add-section-btn" id="btn-add-section-bottom">
-            <span>+</span> Add section at end
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section at end
           </button>
         </div>
       </div>
@@ -262,7 +282,7 @@
       <div class="editor-tab-panel" id="versions-tab-panel" data-editor-tab-panel="versions" role="tabpanel" aria-labelledby="versions-tab" hidden>
         <div class="tool-panel-header">
           <div>
-            <div class="tool-panel-title">Versions</div>
+            <h2 class="tool-panel-title">Versions</h2>
             <div class="tool-panel-subtitle">Manual snapshots for trying arrangement changes without losing earlier charts.</div>
           </div>
         </div>
@@ -272,7 +292,7 @@
       <div class="editor-tab-panel" id="info-tab-panel" data-editor-tab-panel="info" role="tabpanel" aria-labelledby="info-tab" hidden>
         <div class="tool-panel-header">
           <div>
-            <div class="tool-panel-title">Chart info</div>
+            <h2 class="tool-panel-title">Chart info</h2>
             <div class="tool-panel-subtitle">Private workflow details. These fields do not print or export to PDF.</div>
           </div>
         </div>
@@ -299,7 +319,7 @@
       <div class="editor-tab-panel" id="collected-tab-panel" data-editor-tab-panel="collected" role="tabpanel" aria-labelledby="collected-tab" hidden>
         <div class="tool-panel-header">
           <div>
-            <div class="tool-panel-title">Collected sections</div>
+            <h2 class="tool-panel-title">Collected sections</h2>
             <div class="tool-panel-subtitle">Save reusable intros, endings, turnarounds, and section patterns from any chart.</div>
           </div>
         </div>
@@ -308,11 +328,11 @@
     </section>
 
     <!-- ===== PREVIEW PANEL ===== -->
-    <aside class="preview-panel" id="preview-panel">
+    <aside class="preview-panel" id="preview-panel" aria-labelledby="preview-heading">
       <div class="preview-header">
-        <span class="preview-header-title">Preview</span>
+        <h2 class="preview-header-title" id="preview-heading">Preview</h2>
         <div class="preview-header-controls">
-          <button class="btn btn-sm btn-ghost" id="btn-dark-mode" title="Switch to light mode" aria-label="Light mode" aria-pressed="false">🌙</button>
+          <button class="btn btn-sm btn-ghost" id="btn-dark-mode" title="Switch to light mode" aria-label="Light mode" aria-pressed="false"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-moon"/></svg></button>
           <button class="btn btn-sm btn-ghost" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
           <span id="zoom-level" class="zoom-level-text">60%</span>
           <button class="btn btn-sm btn-ghost" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
@@ -332,9 +352,9 @@
 
   <!-- ===== LIBRARY VIEW ===== -->
   <main class="library-view workspace-view" id="library-view" hidden>
-    <aside class="library-groups-panel">
+    <aside class="library-groups-panel" aria-labelledby="library-groups-heading">
       <div class="library-groups-header">
-        <span>Groups</span>
+        <h2 class="library-groups-title" id="library-groups-heading">Groups</h2>
         <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group" aria-label="New group">+</button>
       </div>
       <div class="library-group-list" id="library-group-list"></div>
@@ -355,7 +375,7 @@
           </select>
         </div>
       </div>
-      <div class="library-card-grid" id="library-card-grid"></div>
+      <ul class="library-card-grid" id="library-card-grid" role="list" aria-label="Charts"></ul>
     </section>
   </main>
 
@@ -377,9 +397,9 @@
 </div>
 
 <!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+<div id="settings-modal" class="modal-overlay" data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="settings-modal-title">Settings</h3>
+    <h2 class="modal-title" id="settings-modal-title">Settings</h2>
     <div class="settings-panel">
       <label class="form-label" for="settings-save-folder">Saved songs folder</label>
       <div class="settings-folder-row">
@@ -404,7 +424,7 @@
 <!-- Import Text Modal -->
 <div id="import-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="import-modal-title" aria-describedby="import-modal-description">
   <div class="modal-content">
-    <h3 class="modal-title" id="import-modal-title">Import from Text</h3>
+    <h2 class="modal-title" id="import-modal-title">Import from Text</h2>
     <p class="modal-description" id="import-modal-description">
       Paste raw chart text. Lines starting with chord names (A, Bm, C#m7, etc.) are detected as chords.
       Lines in <code>[brackets]</code> become section labels. Everything else is lyrics.
@@ -418,9 +438,9 @@
 </div>
 
 <!-- Save Version Modal -->
-<div id="version-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="version-modal-title">
-  <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="version-modal-title">Save Version</h3>
+<div id="version-modal" class="modal-overlay" data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="version-modal-title">
+  <form class="modal-content modal-content-sm" id="version-form">
+    <h2 class="modal-title" id="version-modal-title">Save Version</h2>
     <div class="form-group">
       <label class="form-label" for="version-name-input">Name</label>
       <input id="version-name-input" class="form-input" type="text" placeholder="Version name...">
@@ -430,46 +450,46 @@
       <textarea id="version-notes-input" class="form-input input-notes" rows="4" placeholder="What changed in this version?"></textarea>
     </div>
     <div class="modal-footer">
-      <button class="btn" id="btn-version-cancel">Cancel</button>
-      <button class="btn btn-primary" id="btn-version-save">Save Version</button>
+      <button class="btn" type="button" id="btn-version-cancel">Cancel</button>
+      <button class="btn btn-primary" type="submit" id="btn-version-save">Save Version</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Group Modal -->
-<div id="group-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
-  <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="group-modal-title">New Group</h3>
+<div id="group-modal" class="modal-overlay" data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="group-modal-title">
+  <form class="modal-content modal-content-sm" id="group-form">
+    <h2 class="modal-title" id="group-modal-title">New Group</h2>
     <div class="form-group">
       <label class="form-label" for="group-name-input">Name</label>
       <input id="group-name-input" class="form-input" type="text" placeholder="Setlist or folder name...">
     </div>
     <div class="modal-footer">
-      <button class="btn" id="btn-group-cancel">Cancel</button>
-      <button class="btn btn-primary" id="btn-group-save">Save Group</button>
+      <button class="btn" type="button" id="btn-group-cancel">Cancel</button>
+      <button class="btn btn-primary" type="submit" id="btn-group-save">Save Group</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Collect Section Modal -->
-<div id="collect-section-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collect-section-modal-title">
-  <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="collect-section-modal-title">Collect Section</h3>
+<div id="collect-section-modal" class="modal-overlay" data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="collect-section-modal-title">
+  <form class="modal-content modal-content-sm" id="collect-section-form">
+    <h2 class="modal-title" id="collect-section-modal-title">Collect Section</h2>
     <div class="form-group">
       <label class="form-label" for="collect-section-name-input">Name</label>
       <input id="collect-section-name-input" class="form-input" type="text" placeholder="Reusable section name...">
     </div>
     <div class="modal-footer">
-      <button class="btn" id="btn-collect-cancel">Cancel</button>
-      <button class="btn btn-primary" id="btn-collect-save">Save Section</button>
+      <button class="btn" type="button" id="btn-collect-cancel">Cancel</button>
+      <button class="btn btn-primary" type="submit" id="btn-collect-save">Save Section</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Shortcuts Modal -->
-<div id="shortcuts-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+<div id="shortcuts-modal" class="modal-overlay" data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="shortcuts-modal-title">Keyboard Shortcuts</h3>
+    <h2 class="modal-title" id="shortcuts-modal-title">Keyboard Shortcuts</h2>
     <table class="shortcuts-table">
       <tr><th><code>Cmd/Ctrl + Z</code></th><td>Undo</td></tr>
       <tr><th><code>Cmd/Ctrl + Shift + Z</code></th><td>Redo</td></tr>
@@ -487,7 +507,7 @@
 <!-- Custom Confirm Dialog (replaces native confirm() blocked by Tauri) -->
 <div id="confirm-modal" class="modal-overlay modal-overlay-top" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-message">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="confirm-modal-title">Confirm action</h3>
+    <h2 class="modal-title" id="confirm-modal-title">Confirm action</h2>
     <p id="confirm-message" class="confirm-message-text"></p>
     <div class="modal-footer">
       <button class="btn" id="confirm-cancel">Cancel</button>
@@ -499,7 +519,7 @@
 <!-- Custom Alert Dialog (replaces native alert() blocked by Tauri) -->
 <div id="alert-modal" class="modal-overlay modal-overlay-top" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" aria-describedby="alert-message">
   <div class="modal-content modal-content-sm">
-    <h3 class="modal-title" id="alert-modal-title">Notice</h3>
+    <h2 class="modal-title" id="alert-modal-title">Notice</h2>
     <p id="alert-message" class="confirm-message-text"></p>
     <div class="modal-footer">
       <button class="btn btn-primary" id="alert-ok">OK</button>

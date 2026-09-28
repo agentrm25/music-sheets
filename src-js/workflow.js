@@ -104,6 +104,13 @@
     return preview;
   }
 
+  function wrapListItem(element) {
+    const item = document.createElement('li');
+    item.className = 'library-card-grid-message';
+    item.appendChild(element);
+    return item;
+  }
+
   function getFilteredLibraryCharts() {
     const search = ($('full-library-search')?.value || '').trim().toLowerCase();
     const sort = $('full-library-sort')?.value || 'date';
@@ -187,6 +194,7 @@
       editBtn.type = 'button';
       editBtn.className = 'btn btn-sm btn-ghost';
       editBtn.textContent = 'Rename';
+      editBtn.setAttribute('aria-label', `Rename group ${group.name}`);
       editBtn.addEventListener('click', e => {
         e.stopPropagation();
         app.openGroupModal(group.id);
@@ -196,6 +204,7 @@
       deleteBtn.type = 'button';
       deleteBtn.className = 'btn btn-sm btn-ghost';
       deleteBtn.textContent = 'Delete';
+      deleteBtn.setAttribute('aria-label', `Delete group ${group.name}`);
       deleteBtn.addEventListener('click', e => {
         e.stopPropagation();
         app.showConfirm(`Delete "${group.name}"?`, () => app.deleteGroup(group.id));
@@ -256,7 +265,7 @@
   }
 
   function createLibraryCard(chart, groups) {
-    const card = document.createElement('article');
+    const card = document.createElement('li');
     card.className = 'library-card';
     const openChart = () => app.requestLoadChartFromLibrary(chart.data.id);
     card.addEventListener('click', openChart);
@@ -276,9 +285,10 @@
     const favBtn = document.createElement('button');
     favBtn.type = 'button';
     favBtn.className = `favorite-btn ${chart.isFavorite ? 'favorited' : ''}`;
-    favBtn.textContent = chart.isFavorite ? '★' : '☆';
+    favBtn.appendChild(app.icon(chart.isFavorite ? 'star-filled' : 'star'));
     favBtn.title = chart.isFavorite ? 'Remove from favorites' : 'Add to favorites';
-    favBtn.setAttribute('aria-label', favBtn.title);
+    favBtn.setAttribute('aria-label', `Favorite ${chart.name}`);
+    favBtn.setAttribute('aria-pressed', String(chart.isFavorite));
     favBtn.addEventListener('click', e => {
       e.stopPropagation();
       const charts = app.getSavedCharts();
@@ -323,6 +333,7 @@
     deleteBtn.type = 'button';
     deleteBtn.className = 'btn btn-sm btn-ghost';
     deleteBtn.textContent = 'Delete';
+    deleteBtn.setAttribute('aria-label', `Delete ${chart.name}`);
     deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
       app.showConfirm(`Delete "${chart.name}" permanently?`, () => app.deleteChartFromLibrary(chart.data.id));
@@ -354,7 +365,7 @@
           app.renderFullLibrary();
         });
         empty.appendChild(reset);
-        grid.appendChild(empty);
+        grid.appendChild(wrapListItem(empty));
       } else {
         const empty = createEmptyMessage('Your Library is empty', 'Use Save to Library to add your current draft. Draft autosave does not add charts here.');
         const actions = document.createElement('div');
@@ -375,7 +386,7 @@
         actions.appendChild(save);
         actions.appendChild(create);
         empty.appendChild(actions);
-        grid.appendChild(empty);
+        grid.appendChild(wrapListItem(empty));
       }
       return;
     }
@@ -429,6 +440,7 @@
       restoreBtn.className = 'btn btn-sm btn-primary';
       restoreBtn.type = 'button';
       restoreBtn.textContent = 'Restore';
+      restoreBtn.setAttribute('aria-label', `Restore version ${version.name}`);
       restoreBtn.addEventListener('click', () => app.restoreChartVersion(version.id));
       body.appendChild(restoreBtn);
 
@@ -483,12 +495,14 @@
       insertBtn.type = 'button';
       insertBtn.className = 'btn btn-sm btn-primary';
       insertBtn.textContent = 'Insert';
+      insertBtn.setAttribute('aria-label', `Insert ${item.name}`);
       insertBtn.addEventListener('click', () => app.insertCollectedSection(item.id));
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
       deleteBtn.className = 'btn btn-sm btn-ghost';
       deleteBtn.textContent = 'Delete';
+      deleteBtn.setAttribute('aria-label', `Delete ${item.name}`);
       deleteBtn.addEventListener('click', () => app.requestDeleteCollectedSection(item.id));
 
       actions.appendChild(insertBtn);
@@ -638,7 +652,13 @@
     $('full-library-sort')?.addEventListener('change', () => app.renderFullLibrary());
 
     $('btn-group-cancel')?.addEventListener('click', () => app.closeGroupModal());
-    $('btn-group-save')?.addEventListener('click', () => {
+    // Name dialogs are forms, so Enter in a field submits them.
+    const onSubmit = (id, handler) => $(id)?.addEventListener('submit', event => {
+      event.preventDefault();
+      handler();
+    });
+
+    onSubmit('group-form', () => {
       const name = $('group-name-input')?.value || '';
       if (pendingGroupId) {
         if (app.renameGroup(pendingGroupId, name)) app.closeGroupModal();
@@ -649,13 +669,13 @@
 
     $('btn-save-version')?.addEventListener('click', () => app.openVersionModal());
     $('btn-version-cancel')?.addEventListener('click', () => app.closeVersionModal());
-    $('btn-version-save')?.addEventListener('click', () => {
+    onSubmit('version-form', () => {
       app.saveChartVersion($('version-name-input')?.value || '', $('version-notes-input')?.value || '');
       app.closeVersionModal();
     });
 
     $('btn-collect-cancel')?.addEventListener('click', () => app.closeCollectSectionModal());
-    $('btn-collect-save')?.addEventListener('click', () => {
+    onSubmit('collect-section-form', () => {
       if (pendingCollectSectionId) {
         app.saveCollectedSection(pendingCollectSectionId, $('collect-section-name-input')?.value || '');
       }
@@ -683,15 +703,6 @@
       });
     });
 
-    [$('version-modal'), $('group-modal'), $('collect-section-modal')].forEach(modal => {
-      if (!modal) return;
-      modal.addEventListener('click', e => {
-        if (e.target !== modal) return;
-        if (modal.id === 'version-modal') app.closeVersionModal();
-        if (modal.id === 'group-modal') app.closeGroupModal();
-        if (modal.id === 'collect-section-modal') app.closeCollectSectionModal();
-      });
-    });
   };
 
 })(window.ChartApp = window.ChartApp || {});

@@ -134,6 +134,51 @@ body.light-mode {
   display: none !important;
 }
 
+h1,
+h2,
+h3 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Icons (sprite in index.html, built by app.icon) --- */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+}
+
+.btn .icon { width: 14px; height: 14px; }
+.line-action-btn .icon,
+.section-collapse-toggle .icon { width: 14px; height: 14px; }
+.line-drag-handle .icon { width: 14px; height: 14px; }
+.section-drag-handle .icon { width: 16px; height: 16px; }
+.favorite-btn .icon { width: 16px; height: 16px; }
+.toast > .icon { width: 16px; height: 16px; }
+.toast.success > .icon { color: var(--accent-success); }
+.toast.error > .icon { color: var(--accent-danger); }
+.toast.info > .icon { color: var(--accent-primary); }
+
 html,
 body {
   height: 100%;
@@ -436,6 +481,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   grid-auto-rows: max-content;
   align-content: start;
+  list-style: none;
   gap: var(--space-lg);
 }
 
@@ -675,6 +721,10 @@ body {
 .recent-chart-meta {
   font-size: 11px;
   color: var(--text-tertiary);
+}
+
+.library-card-grid-message {
+  grid-column: 1 / -1;
 }
 
 .recent-charts-empty {
@@ -2530,8 +2580,12 @@ body.line-reorder-active {
 
 
 button:focus-visible,
+summary:focus-visible,
 [role="button"]:focus-visible,
 [role="tab"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+.recent-chart:focus-visible,
+.section-type-select:focus-visible,
 .form-input:focus-visible,
 .form-select:focus-visible,
 .line-input:focus-visible,
@@ -2542,4 +2596,45 @@ button:focus-visible,
 .modal-textarea:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+/* One focus ring: keyboard focus draws the outline, so drop the pointer glow. */
+.form-input:focus-visible,
+.form-select:focus-visible,
+.section-repeat-input:focus-visible {
+  box-shadow: none;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .form-input,
+  .form-select,
+  .line-input,
+  .line-type-select,
+  .recent-chart,
+  .toolbar-overflow > summary {
+    min-height: 44px;
+  }
+
+  .line-action-btn,
+  .line-drag-handle,
+  .section-drag-handle,
+  .section-collapse-toggle,
+  .transpose-btn,
+  .bold-toggle,
+  .favorite-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

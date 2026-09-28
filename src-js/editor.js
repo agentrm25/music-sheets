@@ -24,14 +24,13 @@
     }
   };
 
-  function createActionBtn(icon, title, onClick, focusKey) {
+  function createActionBtn(label, accessibleName, onClick, focusKey) {
     const btn = document.createElement('button');
     if (focusKey) btn.dataset.focusKey = focusKey;
     btn.type = 'button';
-    btn.className = 'btn btn-ghost btn-icon btn-sm';
-    btn.innerHTML = icon;
-    btn.title = title;
-    btn.setAttribute('aria-label', title);
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.textContent = label;
+    btn.setAttribute('aria-label', accessibleName);
     btn.addEventListener('click', onClick);
     return btn;
   }
@@ -46,12 +45,12 @@
     return btn;
   }
 
-  function createLineActionBtn(icon, title, onClick, focusKey) {
+  function createLineActionBtn(iconName, title, onClick, focusKey) {
     const btn = document.createElement('button');
     if (focusKey) btn.dataset.focusKey = focusKey;
     btn.type = 'button';
     btn.className = 'line-action-btn';
-    btn.textContent = icon;
+    btn.appendChild(app.icon(iconName));
     btn.title = title;
     btn.setAttribute('aria-label', title);
     btn.addEventListener('click', onClick);
@@ -285,14 +284,15 @@
   function buildSectionHeader(section, sIdx) {
     const header = document.createElement('div');
     header.className = 'section-card-header';
+    const displayTitle = app.getSectionDisplayTitle(section);
 
     const collapseToggle = document.createElement('button');
     collapseToggle.type = 'button';
     collapseToggle.className = 'section-collapse-toggle';
     collapseToggle.dataset.focusKey = 'collapse';
-    collapseToggle.innerHTML = '<span class="chevron">▾</span>';
+    collapseToggle.appendChild(app.icon('chevron-down'));
     collapseToggle.title = 'Collapse/expand section';
-    collapseToggle.setAttribute('aria-label', `${section.collapsed ? 'Expand' : 'Collapse'} section`);
+    collapseToggle.setAttribute('aria-label', `${section.collapsed ? 'Expand' : 'Collapse'} ${displayTitle} section`);
     collapseToggle.setAttribute('aria-expanded', String(!section.collapsed));
     collapseToggle.addEventListener('click', e => {
       e.stopPropagation();
@@ -303,9 +303,9 @@
     dragHandle.type = 'button';
     dragHandle.className = 'section-drag-handle';
     dragHandle.dataset.focusKey = 'section-drag';
-    dragHandle.textContent = '✋';
-    dragHandle.title = 'Drag section to reorder';
-    dragHandle.setAttribute('aria-label', 'Drag section to reorder');
+    dragHandle.appendChild(app.icon('grip'));
+    dragHandle.title = 'Drag to reorder, or use Alt+Arrow keys';
+    dragHandle.setAttribute('aria-label', `Reorder ${displayTitle} section by dragging or with Alt+Arrow Up or Down`);
 
     const typeSelect = document.createElement('select');
     typeSelect.className = 'section-type-select';
@@ -327,9 +327,11 @@
       app.commitChange();
     });
 
+    // Names the card for assistive tech; the type select shows it visually.
     const titleSpan = document.createElement('span');
-    titleSpan.className = 'section-card-title';
-    titleSpan.textContent = app.getSectionDisplayTitle(section);
+    titleSpan.className = 'section-card-title visually-hidden';
+    titleSpan.id = `section-title-${section.id}`;
+    titleSpan.textContent = displayTitle;
 
     let verseNumInput = null;
     if (section.type === 'verse') {
@@ -435,7 +437,7 @@
       actions.classList.add('section-card-actions-push');
     }
 
-    const dupeBtn = createActionBtn('📋', 'Duplicate section', () => {
+    const dupeBtn = createActionBtn('Duplicate', `Duplicate ${displayTitle} section`, () => {
       app.pushUndo();
       const copy = JSON.parse(JSON.stringify(section));
       copy.id = app.generateId();
@@ -447,7 +449,7 @@
         const newCard = document.querySelector(`[data-section-id="${copy.id}"]`);
         if (newCard) {
           newCard.classList.add('section-flash');
-          newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          newCard.scrollIntoView({ behavior: app.scrollBehavior(), block: 'center' });
           const firstInput = newCard.querySelector('.line-input');
           if (firstInput) firstInput.focus();
           setTimeout(() => newCard.classList.remove('section-flash'), 1500);
@@ -455,13 +457,13 @@
       }, 100);
     }, 'duplicate');
 
-    const collectBtn = createActionBtn('☆', 'Save section to collected', () => {
+    const collectBtn = createActionBtn('Collect', `Collect ${displayTitle} section for reuse`, () => {
       if (app.openCollectSectionModal) {
         app.openCollectSectionModal(section.id);
       }
     }, 'collect');
 
-    const deleteBtn = createActionBtn('🗑', 'Delete section', () => {
+    const deleteBtn = createActionBtn('Delete', `Delete ${displayTitle} section`, () => {
       app.pushUndo();
       app.state.sections.splice(sIdx, 1);
       app.commitChange();
@@ -480,18 +482,16 @@
     summary.className = 'btn btn-sm btn-ghost';
     summary.dataset.focusKey = 'options';
     summary.textContent = 'Options';
-    summary.setAttribute('aria-label', `${app.getSectionDisplayTitle(section)} options`);
+    summary.setAttribute('aria-label', `Options for ${displayTitle} section`);
     const optionsContent = document.createElement('div');
     optionsContent.className = 'section-options-content';
     optionsContent.appendChild(fontScaleControl);
     if (repeatControl) optionsContent.appendChild(repeatControl);
-    collectBtn.textContent = 'Collect';
-    dupeBtn.textContent = 'Duplicate';
-    deleteBtn.textContent = 'Delete';
     optionsContent.appendChild(actions);
     options.appendChild(summary);
     options.appendChild(optionsContent);
 
+    header.appendChild(titleSpan);
     header.appendChild(collapseToggle);
     header.appendChild(dragHandle);
     header.appendChild(typeSelect);
@@ -551,6 +551,8 @@
     const card = document.createElement('div');
     card.className = `section-card section-card--${section.type}`;
     card.dataset.sectionId = section.id;
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-labelledby', `section-title-${section.id}`);
     if (section.collapsed) card.classList.add('collapsed');
 
     const header = buildSectionHeader(section, sIdx);
@@ -766,7 +768,7 @@
     dragHandle.dataset.focusKey = 'line-drag';
     dragHandle.dataset.lineId = line.id;
     dragHandle.dataset.sectionId = section.id;
-    dragHandle.innerHTML = '⠿';
+    dragHandle.appendChild(app.icon('grip'));
     dragHandle.title = 'Drag to reorder or use Alt+Arrow keys';
     dragHandle.setAttribute('aria-label', 'Reorder line by dragging or with Alt+Arrow Up or Down');
     dragHandle.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
@@ -913,7 +915,7 @@
       boldBtn.type = 'button';
       boldBtn.textContent = 'B';
       boldBtn.title = 'Toggle bold (emphasized lyric)';
-      boldBtn.setAttribute('aria-label', 'Toggle bold lyric');
+      boldBtn.setAttribute('aria-label', `Bold line ${lIdx + 1}`);
       boldBtn.setAttribute('aria-pressed', String(!!line.bold));
       boldBtn.addEventListener('click', () => {
         app.pushUndo();
@@ -925,21 +927,21 @@
     const actions = document.createElement('div');
     actions.className = 'line-actions';
 
-    const moveUpBtn = createLineActionBtn('↑', 'Move up', () => {
+    const moveUpBtn = createLineActionBtn('arrow-up', `Move line ${lIdx + 1} up`, () => {
       if (lIdx === 0) return;
       app.pushUndo();
       [section.lines[lIdx - 1], section.lines[lIdx]] = [section.lines[lIdx], section.lines[lIdx - 1]];
       app.commitChange();
     }, 'move-up');
 
-    const moveDownBtn = createLineActionBtn('↓', 'Move down', () => {
+    const moveDownBtn = createLineActionBtn('arrow-down', `Move line ${lIdx + 1} down`, () => {
       if (lIdx >= section.lines.length - 1) return;
       app.pushUndo();
       [section.lines[lIdx], section.lines[lIdx + 1]] = [section.lines[lIdx + 1], section.lines[lIdx]];
       app.commitChange();
     }, 'move-down');
 
-    const deleteBtn = createLineActionBtn('×', 'Delete line', () => {
+    const deleteBtn = createLineActionBtn('close', `Delete line ${lIdx + 1}`, () => {
       app.pushUndo();
       section.lines.splice(lIdx, 1);
       app.commitChange();

@@ -204,7 +204,8 @@
     document.body?.classList.toggle('light-mode', isLight);
     const toggle = document.getElementById('btn-dark-mode');
     if (toggle) {
-      toggle.textContent = isLight ? '☀️' : '🌙';
+      toggle.textContent = '';
+      toggle.appendChild(app.icon(isLight ? 'sun' : 'moon'));
       toggle.setAttribute('aria-pressed', String(isLight));
       toggle.setAttribute('aria-label', 'Light mode');
       toggle.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
@@ -578,7 +579,7 @@
     app.showToast(`Inserted "${item.name}"`, 'success');
     setTimeout(() => {
       const card = document.querySelector(`[data-section-id="${copy.id}"]`);
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (card) card.scrollIntoView({ behavior: app.scrollBehavior(), block: 'center' });
     }, 50);
   };
 

@@ -315,7 +315,6 @@
     if (!app.state.title && app.state.sections.length === 0) {
       paper.innerHTML = `
         <div class="chart-empty-placeholder">
-          <div class="chart-empty-placeholder-icon">🎵</div>
           Your chart preview<br>will appear here
         </div>
       `;

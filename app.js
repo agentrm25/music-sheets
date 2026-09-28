@@ -47,6 +47,7 @@
     bindEvents();
     if (app.bindWorkflowEvents) app.bindWorkflowEvents();
     if (app.bindWorkspaceEvents) app.bindWorkspaceEvents();
+    if (app.bindModalBackdrops) app.bindModalBackdrops();
     populateTemplates();
     
     // Load from storage or start fresh
@@ -211,7 +212,7 @@
       app.commitChange();
       setTimeout(() => {
         const cards = document.querySelectorAll('.section-card');
-        if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: 'smooth' });
+        if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: app.scrollBehavior() });
       }, 50);
     });
 
@@ -240,7 +241,7 @@
         app.showToast(`Imported ${newSections.length} sections`, 'success');
         setTimeout(() => {
           const cards = document.querySelectorAll('.section-card');
-          if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: 'smooth' });
+          if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: app.scrollBehavior() });
         }, 50);
       }
     });

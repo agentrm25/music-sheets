@@ -41,7 +41,8 @@ function createApp() {
     console: { warn() {}, error() {} },
     document: {
       getElementById: id => elements.get(id) || null,
-      querySelectorAll: () => [], querySelector: () => null, createElement
+      querySelectorAll: () => [], querySelector: () => null, createElement,
+      createElementNS: (_namespace, tagName) => createElement(tagName)
     },
     localStorage: {
       getItem: key => data.get(key) || null,
@@ -57,7 +58,7 @@ function createApp() {
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); }
   });
-  for (const file of ['state', 'undo', 'storage', 'ui', 'workflow', 'workspace']) {
+  for (const file of ['constants', 'state', 'undo', 'storage', 'ui', 'workflow', 'workspace']) {
     const source = fs.readFileSync(path.join(__dirname, '..', 'src-js', `${file}.js`), 'utf8');
     vm.runInContext(source, context, { filename: `${file}.js` });
   }

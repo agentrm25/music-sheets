@@ -13,6 +13,29 @@
     custom:       { label: 'SECTION',      color: '#9b5c00' }
   };
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  // Decorative icon from the sprite in index.html. Always aria-hidden: the
+  // owning control carries the accessible name.
+  app.icon = function(name) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', `icon icon-${name}`);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const use = document.createElementNS(SVG_NS, 'use');
+    use.setAttribute('href', `#icon-${name}`);
+    svg.appendChild(use);
+    return svg;
+  };
+
+  app.prefersReducedMotion = function() {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
+
+  app.scrollBehavior = function() {
+    return app.prefersReducedMotion() ? 'auto' : 'smooth';
+  };
+
   app.SEARCH_DEBOUNCE_MS = 120;
 
   // Run `callback` once input has paused for `delay` ms.

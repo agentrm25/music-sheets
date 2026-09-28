@@ -9,25 +9,46 @@
     if (app.autoSave) app.autoSave();
   };
 
+  const TOAST_DURATION_MS = 3500;
+  const TOAST_FADE_MS = 300;
+  const TOAST_ICONS = { success: 'check', error: 'alert', info: 'info' };
+
   app.showToast = function(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    const icon = type === 'success' ? '✓' : type === 'error' ? '!' : 'ℹ';
-    const iconSpan = document.createElement('span');
-    iconSpan.style.fontWeight = 'bold';
-    iconSpan.textContent = icon;
+    // Errors interrupt; everything else rides the container's polite region.
+    if (type === 'error') toast.setAttribute('role', 'alert');
+    toast.appendChild(app.icon(TOAST_ICONS[type] || TOAST_ICONS.info));
     const msgSpan = document.createElement('span');
     msgSpan.textContent = message;
-    toast.appendChild(iconSpan);
     toast.appendChild(msgSpan);
-
     container.appendChild(toast);
-    setTimeout(() => {
+
+    // Hovering or focusing a toast pauses its countdown so it can be read.
+    let remaining = TOAST_DURATION_MS;
+    let startedAt = Date.now();
+    let timer = null;
+    const dismiss = () => {
       toast.classList.add('fadeout');
-      setTimeout(() => toast.remove(), 300);
-    }, 3500);
+      setTimeout(() => toast.remove(), TOAST_FADE_MS);
+    };
+    const resume = () => {
+      toast.dataset.paused = 'false';
+      startedAt = Date.now();
+      timer = setTimeout(dismiss, remaining);
+    };
+    const pause = () => {
+      toast.dataset.paused = 'true';
+      clearTimeout(timer);
+      remaining = Math.max(0, remaining - (Date.now() - startedAt));
+    };
+    toast.addEventListener('mouseenter', pause);
+    toast.addEventListener('mouseleave', resume);
+    toast.addEventListener('focusin', pause);
+    toast.addEventListener('focusout', resume);
+    resume();
   };
 
   const modalStack = [];
@@ -113,6 +134,17 @@
     return true;
   };
 
+  // Clicking the backdrop dismisses dialogs marked data-backdrop-dismiss.
+  // Decisions (confirm/alert) and pasted imports stay open until answered.
+  app.bindModalBackdrops = function() {
+    document.addEventListener('click', event => {
+      const overlay = event.target;
+      if (!overlay?.classList?.contains('modal-overlay')) return;
+      if (overlay.dataset.backdropDismiss !== 'true') return;
+      app.closeModal(overlay, 'backdrop');
+    });
+  };
+
   app.hasOpenModal = function() {
     return modalStack.length > 0;
   };
@@ -167,7 +199,8 @@
   app.updateAutoSaveStatus = function(text, state) {
     const el = document.getElementById('status-autosave');
     if (!el) return;
-    el.textContent = text;
+    // Rewriting identical text makes screen readers repeat the live region.
+    if (el.textContent !== text) el.textContent = text;
     if (state) el.dataset.saveState = state;
   };
 

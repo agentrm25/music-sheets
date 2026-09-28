@@ -265,6 +265,10 @@ class FakeDocument {
     return new FakeElement(tagName, this);
   }
 
+  createElementNS(_namespace, tagName) {
+    return new FakeElement(tagName, this);
+  }
+
   createTextNode(value) {
     return new FakeTextNode(value, this);
   }
@@ -373,6 +377,7 @@ function installEnvironment(options = {}) {
 }
 
 function loadStateAndStorage(environment) {
+  freshRequire('src-js/constants.js');
   freshRequire('src-js/state.js');
   freshRequire('src-js/storage.js');
   environment.app.renderSavedCharts = () => {};
@@ -735,7 +740,7 @@ test('B11 theme setting persists without erasing the mirror directory', () => {
     assert.equal(toggle.getAttribute('aria-pressed'), 'true');
     assert.equal(toggle.getAttribute('aria-label'), 'Light mode');
     assert.equal(toggle.title, 'Switch to dark mode');
-    assert.equal(toggle.textContent, '☀️');
+    assert.ok(toggle.querySelector('svg').classList.contains('icon-sun'), 'light mode shows the sun icon');
   } finally {
     environment.restore();
   }
@@ -772,6 +777,7 @@ test('B10 saved success toasts do not infer an unrelated Undo action', () => {
   const environment = installEnvironment({ document });
   try {
     environment.app.undo = () => assert.fail('Save toast must not call chart Undo');
+    freshRequire('src-js/constants.js');
     freshRequire('src-js/ui.js');
 
     environment.app.showToast('"Song" saved', 'success');
@@ -2125,6 +2131,93 @@ test('sidebar Recent list shows the five newest charts and opens them through th
     assert.equal(list.children.every(child => child.tagName === 'LI'), true);
     buttons[1].click();
     assert.deepEqual(requested, ['chart-5']);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('error toasts interrupt politely-announced status and pause while hovered', () => {
+  const document = new FakeDocument();
+  const container = document.register('toast-container');
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/ui.js');
+    environment.app.showToast('Could not save', 'error');
+    environment.app.showToast('Saved', 'success');
+    const [error, success] = container.children;
+    assert.equal(error.getAttribute('role'), 'alert');
+    assert.equal(success.getAttribute('role'), null);
+    assert.equal(error.querySelector('svg').getAttribute('aria-hidden'), 'true');
+    error.dispatchEvent(makeEvent('mouseenter'));
+    assert.equal(error.dataset.paused, 'true');
+    error.dispatchEvent(makeEvent('mouseleave'));
+    assert.equal(error.dataset.paused, 'false');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('section cards are named by their visible section title', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const verse = environment.app.createSection('verse');
+    verse.verseNumber = 2;
+    environment.app.state.sections.push(verse);
+    environment.app.renderEditor();
+    const card = document.querySelector('.section-card');
+    const labelId = card.getAttribute('aria-labelledby');
+    assert.ok(labelId);
+    const title = card.querySelector('.section-card-title');
+    assert.equal(title.id, labelId);
+    assert.equal(title.textContent, 'VERSE 2');
+    assert.equal(card.getAttribute('role'), 'group');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('repeated section actions keep their visible words in the accessible name', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    environment.app.state.sections.push(environment.app.createSection('chorus'));
+    environment.app.renderEditor();
+    for (const [key, word] of [['collect', 'Collect'], ['duplicate', 'Duplicate'], ['delete-section', 'Delete']]) {
+      const button = document.querySelector(`[data-focus-key="${key}"]`);
+      assert.ok(button.getAttribute('aria-label').startsWith(word), `${key} label should start with ${word}`);
+      assert.match(button.getAttribute('aria-label'), /CHORUS/);
+    }
+  } finally {
+    environment.restore();
+  }
+});
+
+test('name dialogs submit with Enter through their form', () => {
+  const document = new FakeDocument();
+  const groupForm = document.register('group-form', 'form');
+  document.register('group-name-input', 'input', groupForm).value = 'Sunday set';
+  const versionForm = document.register('version-form', 'form');
+  document.register('version-name-input', 'input', versionForm).value = 'Acoustic';
+  document.register('version-notes-input', 'textarea', versionForm).value = 'Capo 2';
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/workflow.js');
+    const created = [];
+    const versions = [];
+    environment.app.createGroup = name => { created.push(name); return true; };
+    environment.app.saveChartVersion = (name, notes) => versions.push([name, notes]);
+    environment.app.closeGroupModal = () => {};
+    environment.app.closeVersionModal = () => {};
+    environment.app.bindWorkflowEvents();
+
+    const groupSubmit = makeEvent('submit');
+    groupForm.dispatchEvent(groupSubmit);
+    assert.equal(groupSubmit.defaultPrevented, true);
+    assert.deepEqual(created, ['Sunday set']);
+
+    versionForm.dispatchEvent(makeEvent('submit'));
+    assert.deepEqual(versions, [['Acoustic', 'Capo 2']]);
   } finally {
     environment.restore();
   }
