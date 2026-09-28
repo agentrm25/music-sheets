@@ -16,11 +16,11 @@ The application has two workspaces.
 
 The Editor contains three panels:
 
-1. **Song Details** stores title, artist, current key, original key, BPM, time signature, capo, arrangement notes, transposition controls, and a compact saved-chart list.
+1. **Song details** stores title, artist, current key, original key, BPM, time signature, capo, arrangement notes, and transposition controls. Its **Recent** list shows your five most recently saved charts; **Open Library** jumps to the full Library.
 2. **Editor** contains the Sections, Versions, Info, and Collected tabs.
-3. **Preview** shows the chart's print-oriented appearance, page-break estimates, theme control, and zoom controls.
+3. **Preview** shows the chart's print-oriented appearance, page-break estimates, and zoom controls (25%–200%).
 
-At narrow window widths, use **Song details**, **Edit chart**, and **Preview** to switch panels. Toolbars wrap, and **More** contains New chart, Open JSON, Export JSON, keyboard shortcuts, and Settings. Preview fits its panel automatically; use **Fit** to return to automatic fitting after a manual zoom.
+At narrow window widths, use **Song details**, **Edit chart**, and **Preview** to switch panels. **More** contains New chart, Open JSON, Export JSON, Keyboard shortcuts, the **Light mode** toggle, and Settings. On narrow windows, Undo, Redo, and More show as icons, and Export PDF moves into **More** on the smallest screens. Preview fits its panel automatically; use **Fit** to return to automatic fitting after a manual zoom.
 
 ### Library workspace
 
@@ -28,7 +28,7 @@ The Library provides larger cards for saved charts. Use it to:
 
 - search titles and metadata;
 - sort by newest, title, key, or group;
-- filter by group;
+- filter by group, or choose **Favorites** to see starred charts;
 - mark favorites;
 - move charts between groups;
 - open or delete a chart.
@@ -37,7 +37,7 @@ Deleting a chart from the library is permanent for local storage and requires co
 
 ## Create a chart
 
-Select **More → New chart** in the top toolbar. Save the current chart to Library first if you want to keep it, then confirm the prompt.
+Select **More → New chart** in the top toolbar. If the current chart has changes that aren't saved to Library, Chart Creator asks first, because starting a new chart also clears Undo history.
 
 A new chart starts empty. Select **Add chords & lyrics** to create a verse with a paired row, or **Import existing text**. Open **Song details** to enter any useful metadata:
 
@@ -156,11 +156,11 @@ Use the **+** button beside Groups in the Library workspace to create a group. G
 
 - Assign a chart from its Library card or from the chart's Info tab.
 - Rename a group from its group row.
-- Move every assigned chart before deleting a group.
+- Move every assigned chart before deleting a group; Chart Creator tells you how many charts are still in it.
 
 ### Favorites
 
-Toggle a chart's favorite control from the compact library or full Library workspace. Favorite status belongs to the library entry and is preserved when that chart is saved again.
+Toggle a chart's star on its Library card. Choose **Favorites** in the group list to show only starred charts. Favorite status belongs to the library entry and is preserved when that chart is saved again.
 
 ### Loading a chart
 
@@ -172,8 +172,8 @@ Versions are manual snapshots stored inside a saved chart's library entry.
 
 1. Save the chart to the library at least once.
 2. Open the **Versions** tab.
-3. Select **Save Version**.
-4. Enter a name and optional notes.
+3. Select **Save version**.
+4. Enter a name and optional notes, then press **Enter** or select **Save version**.
 
 Restoring a version replaces the current chart content while retaining the parent chart's identity and version history. Confirm the warning when the current chart has unsaved changes. Save the restored result to the library if it should become the main version.
 
@@ -190,13 +190,13 @@ The **Info** tab contains Group, Status, Source, and Info notes. These are workf
 
 ## Collect and reuse sections
 
-Select the collect action on a section, give the copy a name, and open the **Collected** tab.
+Open a section's **Options** menu, select **Collect**, give the copy a name, and open the **Collected** tab.
 
 Collected sections are stored separately from their source charts. Inserting one creates fresh identifiers, so editing the inserted section does not change the collected copy or original source. Deleting a collected item requires confirmation and does not delete any section already inserted into a chart.
 
 ## Import text
 
-Select **Import Text**, paste the chart, and choose **Import**. Imported sections are appended to the current chart.
+Select **Import text**, paste the chart, and choose **Import**. Imported sections are appended to the current chart.
 
 Parsing rules:
 
@@ -246,7 +246,7 @@ Important limits:
 - Autosave does not write the mirror; **Save to Library** does.
 - Clearing the folder setting stops future mirror writes but does not delete existing files.
 - Deleting a local library chart does not delete its mirror file.
-- If the mirror write fails, the local library save can still succeed and the application reports the folder failure separately.
+- If the mirror write fails, the local library save can still succeed. The status bar shows **Saved to Library · folder sync failed** and Settings shows the error until the next successful folder save.
 
 ## Keyboard reference
 
@@ -258,6 +258,9 @@ Important limits:
 | `Cmd/Ctrl+H` | Open Find & Replace |
 | `Cmd/Ctrl+S` | Save to Library |
 | `Cmd/Ctrl+E` | Export PDF |
+| `Enter` | Add a line below (in a line field) |
+| `Alt+Up/Down` | Move the focused section or line handle |
+| `Esc` | Close the open dialog, menu, or find bar |
 | `?` | Open the shortcut dialog when focus is not in a text field |
 | `Escape` | Close the top dialog or the Find bar |
 | `Alt+Up/Down Arrow` | Reorder the focused section or line handle |
