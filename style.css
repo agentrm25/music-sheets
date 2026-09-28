@@ -293,6 +293,10 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.btn-label-short {
+  display: none;
+}
+
 .toolbar-brand-text {
   font-weight: 700;
   font-size: var(--text-lg);
@@ -334,6 +338,7 @@ body {
   box-shadow: var(--shadow-lg);
 }
 .toolbar-menu .btn { justify-content: flex-start; border-color: transparent; }
+.toolbar-menu .toolbar-menu-narrow { display: none; }
 
 #editor-view { flex-direction: column; min-height: 0; }
 .workspace-panels { display: flex; flex: 1; min-height: 0; overflow: hidden; }
@@ -2015,14 +2020,60 @@ body.section-reorder-active {
 
 @media screen and (max-width: 1099px) {
   .workspace-panels > .preview-panel { display: none; }
+
+  /* Library: groups become a scrollable chip row above the grid */
+  .library-view { flex-direction: column; }
+  .library-groups-panel {
+    width: 100%;
+    min-width: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .library-groups-header { padding: var(--space-md) var(--space-lg) 0; }
+  .library-group-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--space-sm) var(--space-lg) var(--space-md);
+  }
+  .library-group-row { flex-shrink: 0; }
+  .library-group-btn { white-space: nowrap; }
+  .library-main-header { align-items: flex-start; flex-direction: column; }
+}
+
+/* Hidden visually but kept as the button's accessible name */
+@media screen and (max-width: 900px) {
+  #btn-undo .btn-label,
+  #btn-redo .btn-label,
+  .toolbar-overflow .btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 
 @media screen and (max-width: 700px) {
-  .toolbar { padding: 10px 12px; gap: 10px; }
-  .toolbar-brand { width: 100%; }
-  .toolbar-actions { gap: 6px; width: 100%; }
+  /* One-row toolbar: secondary actions become icon buttons */
+  .toolbar { padding: var(--space-sm) var(--space-md); gap: var(--space-sm); }
+  .toolbar-brand-text { display: none; }
+  .toolbar-actions { gap: 6px; flex: 1; justify-content: flex-end; }
   .toolbar-divider { display: none; }
-  .toolbar-actions .btn { padding: 6px 9px; }
+  .toolbar-actions .btn { padding: 6px 8px; }
+  .toolbar-actions .btn-label-long,
+  .toolbar-actions .btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .toolbar-actions .btn-label-short { display: inline; }
+  .info-panel-grid { grid-template-columns: minmax(0, 1fr); }
   .editor-toolbar { padding: 12px; }
   .editor-tabs { flex-wrap: wrap; }
   .editor-sections { padding: 12px; }
@@ -2038,14 +2089,17 @@ body.section-reorder-active {
   .form-row .form-group { min-width: 0; }
   .status-bar { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
   .status-bar-left { flex-wrap: wrap; gap: 4px 16px; }
-  .library-view { flex-direction: column; }
-  .library-groups-panel { width: 100%; min-width: 0; max-height: 160px; }
-  .library-group-list { flex-direction: row; flex-wrap: wrap; overflow-y: auto; }
-  .library-main-header { align-items: flex-start; flex-direction: column; }
   .library-controls { width: 100%; flex-wrap: wrap; }
   .library-full-search { min-width: 0; width: 100%; }
   .library-full-sort { width: 100%; }
   .library-card-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+}
+
+@media screen and (max-width: 420px) {
+  .toolbar-actions { gap: 4px; }
+  .toolbar-brand { display: none; }
+  #btn-export-pdf { display: none; }
+  .toolbar-menu .toolbar-menu-narrow { display: flex; }
 }
 
 @media (hover: none) {
@@ -2339,7 +2393,7 @@ body.line-reorder-active {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: var(--space-2xl);
-  width: 540px;
+  width: min(540px, 100vw - 32px);
   max-height: 80vh;
   display: flex;
   flex-direction: column;

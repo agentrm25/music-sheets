@@ -103,6 +103,7 @@
     document.getElementById('btn-save-library').addEventListener('click', saveToLibrary);
     document.getElementById('btn-export-json').addEventListener('click', () => app.exportJSON());
     document.getElementById('btn-export-pdf').addEventListener('click', () => app.exportPDF());
+    document.getElementById('btn-export-pdf-menu')?.addEventListener('click', () => app.exportPDF());
     document.getElementById('btn-settings').addEventListener('click', () => app.openSettings());
     
     document.getElementById('btn-load').addEventListener('click', () => {

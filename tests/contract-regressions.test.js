@@ -167,7 +167,7 @@ test('toolbar actions wrap and secondary commands remain available through a lab
   assert.match(actions, /flex-wrap\s*:\s*wrap/);
   assert.match(actions, /min-width\s*:\s*0/);
   assert.equal(attribute(openingTagById('toolbar-more'), 'class'), 'toolbar-overflow');
-  assert.match(html, /<summary[^>]*>More<\/summary>/);
+  assert.match(html, /<summary[^>]*>[\s\S]*?\bMore\b[\s\S]*?<\/summary>/);
   for (const id of ['btn-new', 'btn-load', 'btn-export-json', 'btn-settings', 'btn-shortcuts']) {
     assert.ok(openingTagById(id), `${id} must remain accessible`);
   }
@@ -388,4 +388,23 @@ test('user-facing labels use sentence case', () => {
   for (const title of ['Import Text', 'Save Version', 'Replace All', 'Save Group', 'Save Section', 'Import from Text', 'New Group', 'Collect Section', 'Keyboard Shortcuts']) {
     assert.ok(!html.includes(`>${title}<`), `"${title}" should be sentence case`);
   }
+});
+
+test('toolbar collapses to icon buttons on narrow screens without losing names', () => {
+  for (const id of ['btn-undo', 'btn-redo', 'btn-export-pdf']) {
+    const button = html.slice(html.indexOf(`id="${id}"`), html.indexOf('</button>', html.indexOf(`id="${id}"`)));
+    assert.match(button, /<svg class="icon"/, `${id} needs an icon`);
+    assert.match(button, /<span class="btn-label">/, `${id} needs a label span`);
+  }
+  const narrow = balancedBlockAfter(css, /@media screen and \(max-width:\s*700px\)/);
+  assert.match(narrow, /\.toolbar-actions \.btn-label\s*\{[^}]*clip/);
+  assert.match(narrow, /\.toolbar-brand-text\s*\{[^}]*display\s*:\s*none/);
+  assert.match(narrow, /\.info-panel-grid\s*\{[^}]*grid-template-columns\s*:\s*minmax\(0,\s*1fr\)/);
+});
+
+test('dialogs and the Library adapt to narrow viewports', () => {
+  assert.match(balancedBlockAfter(css, /\n\.modal-content\s*\{/), /width\s*:\s*min\(540px,\s*100vw - 32px\)/);
+  const tablet = balancedBlockAfter(css, /@media screen and \(max-width:\s*1099px\)/);
+  assert.match(tablet, /\.library-view\s*\{[^}]*flex-direction\s*:\s*column/);
+  assert.match(tablet, /\.library-group-list\s*\{[^}]*flex-direction\s*:\s*row/);
 });

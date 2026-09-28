@@ -45,22 +45,23 @@
       </button>
       <div class="toolbar-divider"></div>
       <button class="btn btn-sm btn-primary" id="btn-save-library" title="Save to Library">
-        Save to Library
+        <span class="btn-label-long">Save to Library</span><span class="btn-label-short" aria-hidden="true">Save</span>
       </button>
       <button class="btn btn-sm" id="btn-undo" title="Undo (Cmd+Z)" disabled>
-        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-undo"/></svg> Undo
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-undo"/></svg> <span class="btn-label">Undo</span>
       </button>
       <button class="btn btn-sm" id="btn-redo" title="Redo (Cmd+Shift+Z)" disabled>
-        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-redo"/></svg> Redo
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-redo"/></svg> <span class="btn-label">Redo</span>
       </button>
       <button class="btn btn-sm" id="btn-export-pdf" title="Export as PDF">
-        Export PDF
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-download"/></svg> <span class="btn-label">Export PDF</span>
       </button>
       <details class="toolbar-overflow" id="toolbar-more">
-        <summary class="btn btn-sm">More</summary>
+        <summary class="btn btn-sm"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-more"/></svg> <span class="btn-label">More</span></summary>
         <div class="toolbar-menu">
           <button class="btn btn-sm" id="btn-new" title="New Chart">New chart</button>
           <button class="btn btn-sm" id="btn-load" title="Load Chart from JSON">Open JSON</button>
+          <button class="btn btn-sm toolbar-menu-narrow" id="btn-export-pdf-menu" type="button">Export PDF</button>
           <button class="btn btn-sm" id="btn-export-json" title="Export Chart as JSON">Export JSON</button>
           <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">Keyboard shortcuts</button>
           <button class="btn btn-sm" id="btn-dark-mode" type="button" aria-label="Light mode" aria-pressed="false"><span class="theme-toggle-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-moon"/></svg></span> Light mode</button>
