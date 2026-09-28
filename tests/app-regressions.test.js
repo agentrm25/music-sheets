@@ -607,11 +607,11 @@ test('B23 library quota failures use the accessible in-app alert and remain atom
     assert.equal(storage.getItem('chart-creator-saved'), null);
     assert.equal(nativeAlertCalls, 0);
     assert.match(String(loggedErrors[0]?.[0]), /library save failed/i);
-    assert.equal(modal.style.display, 'flex');
+    assert.equal(modal.hidden, false);
     assert.match(message.textContent, /local storage is full/i);
     assert.equal(document.activeElement, ok);
     ok.click();
-    assert.equal(modal.style.display, 'none');
+    assert.equal(modal.hidden, true);
   } finally {
     environment.restore();
     if (originalAlert === undefined) delete global.alert;
@@ -864,11 +864,11 @@ test('B03 find-replace opens the correct workspace and restores focus on close',
 
     environment.app.openSearchReplace('replace');
 
-    assert.equal(bar.style.display, 'flex');
+    assert.equal(bar.hidden, false);
     assert.equal(document.activeElement, replace);
     assert.deepEqual(transitions, ['workspace:editor', 'tab:sections']);
     environment.app.closeSearchReplace();
-    assert.equal(bar.style.display, 'none');
+    assert.equal(bar.hidden, true);
     assert.equal(document.activeElement, opener);
     assert.notEqual(find, document.activeElement);
   } finally {
@@ -898,11 +898,11 @@ test('B14 modal stack traps focus, closes the top dialog on Escape, and restores
     environment.app.openModal(secondModal, { initialFocus: secondButton });
     assert.equal(document.activeElement, secondButton);
     document.dispatchEvent(makeEvent('keydown', { key: 'Escape' }));
-    assert.equal(secondModal.style.display, 'none');
+    assert.equal(secondModal.hidden, true);
     assert.equal(document.activeElement, lastButton);
 
     document.dispatchEvent(makeEvent('keydown', { key: 'Escape' }));
-    assert.equal(firstModal.style.display, 'none');
+    assert.equal(firstModal.hidden, true);
     assert.equal(document.activeElement, opener);
   } finally {
     environment.restore();
@@ -1084,7 +1084,7 @@ test('B03 keyboard shortcuts reveal find and replace rather than focusing hidden
   const { environment } = bootApplication();
   try {
     const bar = environment.document.getElementById('search-replace-bar');
-    bar.style.display = 'none';
+    bar.hidden = true;
     environment.document.dispatchEvent(makeEvent('keydown', {
       key: 'h',
       metaKey: true,
@@ -1093,7 +1093,7 @@ test('B03 keyboard shortcuts reveal find and replace rather than focusing hidden
       target: environment.document.body
     }));
 
-    assert.equal(bar.style.display, 'flex');
+    assert.equal(bar.hidden, false);
     assert.equal(environment.document.activeElement, environment.document.getElementById('search-replace-input'));
   } finally {
     environment.restore();
@@ -1105,6 +1105,7 @@ test('B14 global shortcuts cannot move focus outside an open modal', () => {
   try {
     const modal = environment.document.getElementById('shortcuts-modal');
     const close = environment.document.getElementById('btn-shortcuts-close');
+    environment.document.getElementById('search-replace-bar').hidden = true;
     environment.app.openModal(modal, { initialFocus: close });
 
     const findEvent = makeEvent('keydown', {
@@ -1116,7 +1117,7 @@ test('B14 global shortcuts cannot move focus outside an open modal', () => {
     environment.document.dispatchEvent(findEvent);
 
     assert.equal(environment.document.activeElement.id, close.id);
-    assert.notEqual(environment.document.getElementById('search-replace-bar').style.display, 'flex');
+    assert.equal(environment.document.getElementById('search-replace-bar').hidden, true);
     assert.equal(findEvent.defaultPrevented, true);
 
     const textField = environment.document.createElement('textarea');
@@ -1238,10 +1239,10 @@ test('B18 empty text import reports an error and keeps focus in the dialog', () 
     const textarea = environment.document.getElementById('import-textarea');
     const modal = environment.document.getElementById('import-modal');
     textarea.value = '   \n';
-    modal.style.display = 'flex';
+    modal.hidden = false;
     environment.document.getElementById('btn-import-confirm').click();
 
-    assert.equal(modal.style.display, 'flex');
+    assert.equal(modal.hidden, false);
     assert.equal(environment.document.activeElement.id, textarea.id);
     assert.match(calls.toasts.at(-1).message, /paste|enter|empty/i);
     assert.equal(calls.toasts.at(-1).type, 'error');
@@ -1267,8 +1268,8 @@ test('B14 Escape closes only the top modal and leaves find-replace open', () => 
       target: environment.document.body
     }));
 
-    assert.equal(modal.style.display, 'none');
-    assert.equal(searchBar.style.display, 'flex');
+    assert.equal(modal.hidden, true);
+    assert.equal(searchBar.hidden, false);
   } finally {
     environment.restore();
   }
@@ -1300,7 +1301,7 @@ test('B03 closing find restores the workspace, tab, and visible opener', () => {
   const document = new FakeDocument();
   const opener = document.register('full-library-search', 'input');
   const bar = document.register('search-replace-bar');
-  bar.style.display = 'none';
+  bar.hidden = true;
   document.register('search-find-input', 'input', bar);
   document.register('search-replace-input', 'input', bar);
   document.register('search-regex', 'input', bar);
@@ -1343,7 +1344,7 @@ test('B03 leaving the editor dismisses find without restoring its old workspace'
   document.register('btn-library-view', 'button');
   const opener = document.register('input-status', 'input');
   const bar = document.register('search-replace-bar');
-  bar.style.display = 'none';
+  bar.hidden = true;
   document.register('search-find-input', 'input', bar);
   document.register('search-replace-input', 'input', bar);
   document.register('search-regex', 'input', bar);
@@ -1368,7 +1369,7 @@ test('B03 leaving the editor dismisses find without restoring its old workspace'
     assert.equal(environment.app.activeWorkspace, 'library');
     assert.equal(editorView.hidden, true);
     assert.equal(libraryView.hidden, false);
-    assert.equal(bar.style.display, 'none');
+    assert.equal(bar.hidden, true);
   } finally {
     environment.restore();
   }
@@ -2218,6 +2219,128 @@ test('name dialogs submit with Enter through their form', () => {
 
     versionForm.dispatchEvent(makeEvent('submit'));
     assert.deepEqual(versions, [['Acoustic', 'Capo 2']]);
+  } finally {
+    environment.restore();
+  }
+});
+
+function confirmDocument() {
+  const document = new FakeDocument();
+  const modal = document.register('confirm-modal');
+  document.register('confirm-modal-title', 'h2', modal);
+  document.register('confirm-message', 'p', modal);
+  document.register('confirm-cancel', 'button', modal);
+  const ok = document.register('confirm-ok', 'button', modal);
+  ok.className = 'btn btn-danger';
+  return document;
+}
+
+test('confirm dialogs name the action and only destructive actions look dangerous', () => {
+  const document = confirmDocument();
+  const environment = installEnvironment({ document });
+  try {
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/ui.js');
+    const ok = document.getElementById('confirm-ok');
+    environment.app.showConfirm('Unsaved changes will be lost.', () => {}, { title: 'Open chart?', confirmLabel: 'Open chart', danger: false });
+    assert.equal(document.getElementById('confirm-modal-title').textContent, 'Open chart?');
+    assert.equal(ok.textContent, 'Open chart');
+    assert.equal(ok.classList.contains('btn-danger'), false);
+    assert.equal(ok.classList.contains('btn-primary'), true);
+    document.getElementById('confirm-cancel').click();
+
+    environment.app.showConfirm('This cannot be undone.', () => {}, { title: 'Delete chart?', confirmLabel: 'Delete' });
+    assert.equal(ok.textContent, 'Delete');
+    assert.equal(ok.classList.contains('btn-danger'), true);
+    assert.equal(ok.classList.contains('btn-primary'), false);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('PDF export shows a busy state and ignores repeat requests while running', async () => {
+  const document = new FakeDocument();
+  const button = document.register('btn-export-pdf', 'button');
+  const environment = installEnvironment({ document });
+  global.requestAnimationFrame = callback => { queueMicrotask(callback); return 1; };
+  try {
+    const toasts = [];
+    environment.app.showToast = (message, type) => toasts.push({ message, type });
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/import-export.js');
+    const first = environment.app.exportPDF();
+    const second = environment.app.exportPDF();
+    assert.equal(button.disabled, true);
+    assert.equal(button.getAttribute('aria-busy'), 'true');
+    await Promise.all([first, second]);
+    assert.equal(toasts.filter(toast => toast.message === 'Generating PDF…').length, 1);
+    assert.equal(button.disabled, false);
+    assert.equal(button.getAttribute('aria-busy'), null);
+  } finally {
+    delete global.requestAnimationFrame;
+    environment.restore();
+  }
+});
+
+test('opening a JSON file asks before replacing a chart with unsaved changes', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/import-export.js');
+    const imported = [];
+    const confirms = [];
+    environment.app.importJSON = file => imported.push(file);
+    environment.app.showConfirm = (message, onConfirm, options) => confirms.push({ message, onConfirm, options });
+    environment.app.state = { title: 'Draft', sections: [] };
+    environment.app.isCurrentChartDirty = () => false;
+    environment.app.requestImportJSON('clean.json');
+    assert.deepEqual(imported, ['clean.json']);
+
+    environment.app.isCurrentChartDirty = () => true;
+    environment.app.requestImportJSON('dirty.json');
+    assert.deepEqual(imported, ['clean.json']);
+    assert.equal(confirms.length, 1);
+    assert.equal(confirms[0].options.confirmLabel, 'Open file');
+    confirms[0].onConfirm();
+    assert.deepEqual(imported, ['clean.json', 'dirty.json']);
+
+    environment.app.state = { title: '', sections: [] };
+    environment.app.requestImportJSON('empty.json');
+    assert.deepEqual(imported, ['clean.json', 'dirty.json', 'empty.json']);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('line move buttons are disabled at the ends and focus survives reaching an end', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const section = environment.app.createSection('verse');
+    const first = environment.app.createLine('lyric', 'one');
+    const second = environment.app.createLine('lyric', 'two');
+    section.lines = [first, second];
+    environment.app.state.sections.push(section);
+    environment.app.renderEditor();
+    assert.equal(lineControl(document, first.id, 'move-up').disabled, true);
+    assert.equal(lineControl(document, first.id, 'move-down').disabled, false);
+    assert.equal(lineControl(document, second.id, 'move-down').disabled, true);
+
+    const moveDown = lineControl(document, first.id, 'move-down');
+    moveDown.focus();
+    moveDown.click();
+    assert.deepEqual(section.lines.map(line => line.id), [second.id, first.id]);
+    assert.equal(document.activeElement.disabled, false);
+    assert.equal(document.activeElement.closest('.line-item').dataset.lineId, first.id);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('pluralize counts', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/constants.js');
+    assert.equal(environment.app.pluralize(1, 'section'), '1 section');
+    assert.equal(environment.app.pluralize(3, 'section'), '3 sections');
   } finally {
     environment.restore();
   }

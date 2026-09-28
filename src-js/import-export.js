@@ -134,8 +134,33 @@
     }
   };
 
-  app.exportPDF = async function() {
+  // Let the browser paint (busy button, toast) before long synchronous work.
+  function nextPaint() {
+    if (typeof requestAnimationFrame === 'function') return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    if (typeof setTimeout === 'function') return new Promise(resolve => setTimeout(resolve, 0));
+    return Promise.resolve();
+  }
+
+  app.requestImportJSON = function(file) {
+    const hasWork = Boolean(app.state && (app.state.title || (app.state.sections || []).length));
+    if (hasWork && app.isCurrentChartDirty && app.isCurrentChartDirty()) {
+      app.showConfirm(
+        'Changes that aren’t saved to Library will be replaced. You can still Undo afterwards.',
+        () => app.importJSON(file),
+        { title: 'Open this file?', confirmLabel: 'Open file', danger: false }
+      );
+      return;
+    }
+    app.importJSON(file);
+  };
+
+  app.exportPDF = function() {
+    return app.runWithBusyButton('btn-export-pdf', exportPdfNow);
+  };
+
+  async function exportPdfNow() {
     app.showToast('Generating PDF…', 'info');
+    await nextPaint();
 
     try {
       const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
@@ -484,6 +509,6 @@
       console.error('PDF export error:', err);
       app.showToast('PDF export failed: ' + err.message, 'error');
     }
-  };
+  }
 
 })(window.ChartApp = window.ChartApp || {});

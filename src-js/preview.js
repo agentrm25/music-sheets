@@ -381,6 +381,10 @@
     });
   };
 
+  app.ZOOM_MIN = 25;
+  app.ZOOM_MAX = 200;
+  app.ZOOM_STEP = 10;
+
   app.fitPreview = function() {
     app.previewAutoFit = true;
     app.applyZoom();
@@ -398,7 +402,7 @@
           (parseFloat(scrollStyle.paddingRight) || 0);
         const paperWidth = chartPaper.offsetWidth || parseFloat(getComputedStyle(chartPaper).width) || 612;
         if (availableWidth > 0) {
-          app.previewZoom = Math.max(1, Math.min(100, Math.floor(availableWidth / paperWidth * 100)));
+          app.previewZoom = Math.max(app.ZOOM_MIN, Math.min(100, Math.floor(availableWidth / paperWidth * 100)));
         }
       }
     }
@@ -410,6 +414,10 @@
     chartWrapper.style.width = '';
     const zoomLevel = document.getElementById('zoom-level');
     if (zoomLevel) zoomLevel.textContent = `${app.previewZoom}%`;
+    const zoomIn = document.getElementById('btn-zoom-in');
+    const zoomOut = document.getElementById('btn-zoom-out');
+    if (zoomIn) zoomIn.disabled = app.previewZoom >= app.ZOOM_MAX;
+    if (zoomOut) zoomOut.disabled = app.previewZoom <= app.ZOOM_MIN;
   };
 
 })(window.ChartApp = window.ChartApp || {});

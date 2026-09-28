@@ -44,7 +44,7 @@ async function renderPDF(lines, sectionOptions = {}) {
     showToast(message, type) { if (type === 'error') errors.push(message); }
   };
   const context = vm.createContext({ window: { ChartApp: app, jspdf: { jsPDF: InspectableJsPDF } }, console });
-  for (const file of ['preview.js', 'import-export.js']) {
+  for (const file of ['constants.js', 'preview.js', 'import-export.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../src-js', file), 'utf8'), context);
   }
   await app.exportPDF();

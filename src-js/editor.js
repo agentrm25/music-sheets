@@ -225,6 +225,14 @@
     return scope?.querySelectorAll(`[data-focus-key="${key}"]`)[0] || null;
   }
 
+  // A control can become disabled by the change itself (e.g. Move down on
+  // what is now the last line); fall back to the line's drag handle.
+  function findFocusableKey(scope, key) {
+    const target = findFocusKey(scope, key);
+    if (target && !target.disabled) return target;
+    return findFocusKey(scope, 'line-drag');
+  }
+
   function restoreEditorFocus(snapshot, cards) {
     if (!snapshot) return;
     const card = cards.find(item => item.dataset.sectionId === snapshot.sectionId);
@@ -241,12 +249,12 @@
     const lineItems = Array.from(card.querySelectorAll('.line-item'));
     const lineItem = lineItems.find(item => item.dataset.lineId === snapshot.lineId);
     if (lineItem) {
-      findFocusKey(lineItem, snapshot.key)?.focus();
+      findFocusableKey(lineItem, snapshot.key)?.focus();
       return;
     }
     // The line was deleted: focus the same control on its neighbour, or the add bar.
     const neighbour = lineItems[Math.min(snapshot.lineIndex, lineItems.length - 1)];
-    (findFocusKey(neighbour, snapshot.key) || findFocusKey(card, 'add-lyric'))?.focus();
+    (neighbour ? findFocusableKey(neighbour, snapshot.key) : findFocusKey(card, 'add-lyric'))?.focus();
   }
 
   app.renderEditor = function() {
@@ -494,6 +502,10 @@
     header.appendChild(titleSpan);
     header.appendChild(collapseToggle);
     header.appendChild(dragHandle);
+    const typeDot = document.createElement('span');
+    typeDot.className = 'section-type-dot';
+    typeDot.setAttribute('aria-hidden', 'true');
+    header.appendChild(typeDot);
     header.appendChild(typeSelect);
     if (verseNumInput) header.appendChild(verseNumInput);
     if (customInput) header.appendChild(customInput);
@@ -947,6 +959,9 @@
       app.commitChange();
     }, 'delete-line');
     deleteBtn.classList.add('delete');
+
+    moveUpBtn.disabled = lIdx === 0;
+    moveDownBtn.disabled = lIdx >= section.lines.length - 1;
 
     actions.appendChild(moveUpBtn);
     actions.appendChild(moveDownBtn);

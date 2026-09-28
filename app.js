@@ -72,10 +72,15 @@
     app.autoSave(true);
   }
 
+  function saveToLibrary() {
+    return app.runWithBusyButton('btn-save-library', () => app.saveChartToLibrary());
+  }
+
   function bindEvents() {
     // Toolbar
     document.getElementById('btn-new').addEventListener('click', () => {
-      app.showConfirm('Create a new chart? Save this chart to Library first if you want to keep it.', () => {
+      // Starting over clears Undo, so only ask when there is unsaved work.
+      const startNewChart = () => {
         app.pushUndo();
         app.state = app.createEmptyChart();
         app.syncFormFromState();
@@ -85,10 +90,17 @@
         if (app.showEditorTab) app.showEditorTab('sections');
         if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
         document.getElementById('btn-start-chart')?.focus();
-      });
+      };
+      const hasWork = Boolean(app.state.title || app.state.sections.length);
+      const isDirty = app.isCurrentChartDirty ? app.isCurrentChartDirty() : true;
+      if (hasWork && isDirty) {
+        app.showConfirm('Changes that aren’t saved to Library will be lost, and Undo history is cleared.', startNewChart, { title: 'Start a new chart?', confirmLabel: 'New chart' });
+      } else {
+        startNewChart();
+      }
     });
 
-    document.getElementById('btn-save-library').addEventListener('click', () => app.saveChartToLibrary());
+    document.getElementById('btn-save-library').addEventListener('click', saveToLibrary);
     document.getElementById('btn-export-json').addEventListener('click', () => app.exportJSON());
     document.getElementById('btn-export-pdf').addEventListener('click', () => app.exportPDF());
     document.getElementById('btn-settings').addEventListener('click', () => app.openSettings());
@@ -98,7 +110,7 @@
     });
     document.getElementById('file-input-json').addEventListener('change', e => {
       if (e.target.files.length) {
-        app.importJSON(e.target.files[0]);
+        app.requestImportJSON(e.target.files[0]);
         e.target.value = ''; // Reset
       }
     });
@@ -238,7 +250,7 @@
         app.state.sections = app.state.sections.concat(newSections);
         app.commitChange();
         app.closeModal('import-modal');
-        app.showToast(`Imported ${newSections.length} sections`, 'success');
+        app.showToast(`Imported ${app.pluralize(newSections.length, 'section')}`, 'success');
         setTimeout(() => {
           const cards = document.querySelectorAll('.section-card');
           if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: app.scrollBehavior() });
@@ -252,25 +264,15 @@
       app.setTheme(currentTheme === 'light' ? 'dark' : 'light');
     });
 
-    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    const zoomBy = step => {
+      const next = Math.max(app.ZOOM_MIN, Math.min(app.ZOOM_MAX, app.previewZoom + step));
+      if (next === app.previewZoom) return;
       app.previewAutoFit = false;
-      if (app.previewZoom < 200) {
-        app.previewZoom += 10;
-        document.getElementById('zoom-level').textContent = app.previewZoom + '%';
-        app.applyZoom();
-        app.renderPreview(); // Re-render for page breaks
-      }
-    });
-
-    document.getElementById('btn-zoom-out').addEventListener('click', () => {
-      app.previewAutoFit = false;
-      if (app.previewZoom > 50) {
-        app.previewZoom -= 10;
-        document.getElementById('zoom-level').textContent = app.previewZoom + '%';
-        app.applyZoom();
-        app.renderPreview(); // Re-render for page breaks
-      }
-    });
+      app.previewZoom = next;
+      app.renderPreview(); // Re-render for page breaks; also applies the zoom
+    };
+    document.getElementById('btn-zoom-in').addEventListener('click', () => zoomBy(app.ZOOM_STEP));
+    document.getElementById('btn-zoom-out').addEventListener('click', () => zoomBy(-app.ZOOM_STEP));
 
     document.getElementById('btn-zoom-fit')?.addEventListener('click', () => {
       app.previewAutoFit = true;
@@ -312,7 +314,7 @@
 
       if (cmd && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        app.saveChartToLibrary();
+        saveToLibrary();
       }
 
       if (cmd && e.key.toLowerCase() === 'h') {
@@ -332,7 +334,7 @@
 
       if (e.key === 'Escape') {
         const searchBar = document.getElementById('search-replace-bar');
-        if ((!app.hasOpenModal || !app.hasOpenModal()) && searchBar && searchBar.style.display !== 'none') {
+        if ((!app.hasOpenModal || !app.hasOpenModal()) && searchBar && !searchBar.hidden) {
           app.closeSearchReplace();
         }
       }

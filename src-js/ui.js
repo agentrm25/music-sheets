@@ -112,7 +112,7 @@
     };
     modalStack.push(entry);
     if (modalStack.length === 1) document.addEventListener('keydown', handleModalKeydown);
-    modal.style.display = 'flex';
+    modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
 
     const initialFocus = options.initialFocus || getFocusableElements(modal)[0] || modal;
@@ -126,7 +126,7 @@
     const index = modalStack.findIndex(entry => entry.modal === modal);
     if (index < 0) return false;
     const [entry] = modalStack.splice(index, 1);
-    entry.modal.style.display = 'none';
+    entry.modal.hidden = true;
     entry.modal.setAttribute('aria-hidden', 'true');
     if (entry.onClose) entry.onClose(reason);
     if (!modalStack.length) document.removeEventListener('keydown', handleModalKeydown);
@@ -149,13 +149,21 @@
     return modalStack.length > 0;
   };
 
-  app.showConfirm = function(message, onConfirm) {
+  // options: { title, confirmLabel, danger }. Destructive (danger) is the
+  // default so an unlabelled confirm never looks safer than it is.
+  app.showConfirm = function(message, onConfirm, options = {}) {
     const modal = document.getElementById('confirm-modal');
     if (!modal) return;
+    const { title = 'Are you sure?', confirmLabel = 'Confirm', danger = true } = options;
+    const titleEl = document.getElementById('confirm-modal-title');
+    if (titleEl) titleEl.textContent = title;
     document.getElementById('confirm-message').textContent = message;
 
     const cancelBtn = document.getElementById('confirm-cancel');
     const okBtn = document.getElementById('confirm-ok');
+    okBtn.textContent = confirmLabel;
+    okBtn.classList.toggle('btn-danger', danger);
+    okBtn.classList.toggle('btn-primary', !danger);
 
     const cleanup = () => {
       cancelBtn.removeEventListener('click', onCancelClick);
@@ -189,6 +197,11 @@
 
   app.updateStatusBar = function() {
     if (!app.state) return;
+    const canTranspose = app.state.sections.length > 0;
+    ['btn-transpose-up', 'btn-transpose-down'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.disabled = !canTranspose;
+    });
     const secEl = document.getElementById('status-sections');
     const keyEl = document.getElementById('status-key');
     if (secEl) secEl.textContent = `${app.state.sections.length} section${app.state.sections.length !== 1 ? 's' : ''}`;
@@ -213,8 +226,9 @@
       pending: 'Library changes pending',
       saved: 'Saved to Library'
     };
-    el.textContent = labels[state];
-    el.dataset.saveState = state;
+    const syncFailed = state === 'saved' && Boolean(app.folderSyncError);
+    el.textContent = syncFailed ? `${labels.saved} · folder sync failed` : labels[state];
+    el.dataset.saveState = syncFailed ? 'sync-failed' : state;
     el.title = state === 'saved'
       ? 'Your current chart matches the copy in Library.'
       : 'Choose Save to Library to keep the current chart in your Library.';
@@ -335,7 +349,7 @@
   app.openSearchReplace = function(focusMode = 'find') {
     const bar = document.getElementById('search-replace-bar');
     if (!bar) return;
-    if (bar.style.display === 'none' || !searchContext) {
+    if (bar.hidden || !searchContext) {
       searchContext = {
         opener: document.activeElement,
         workspace: app.activeWorkspace,
@@ -346,7 +360,7 @@
     if (app.showWorkspace) app.showWorkspace('editor');
     if (app.showEditorTab) app.showEditorTab('sections');
     if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
-    bar.style.display = 'flex';
+    bar.hidden = false;
     const target = focusMode === 'replace'
       ? document.getElementById('search-replace-input')
       : document.getElementById('search-find-input');
@@ -356,7 +370,7 @@
   app.closeSearchReplace = function(options = {}) {
     const bar = document.getElementById('search-replace-bar');
     if (!bar) return;
-    bar.style.display = 'none';
+    bar.hidden = true;
     app.clearSearchHighlight();
     const context = searchContext;
     searchContext = null;
@@ -369,7 +383,7 @@
 
   app.isSearchReplaceOpen = function() {
     const bar = document.getElementById('search-replace-bar');
-    return !!bar && bar.style.display !== 'none';
+    return !!bar && !bar.hidden;
   };
 
   app.clearSearchHighlight = function() {

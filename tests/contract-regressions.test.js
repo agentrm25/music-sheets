@@ -362,3 +362,30 @@ test('appearance toggle lives with app-wide commands, not in the preview header'
   const previewHeader = html.slice(html.indexOf('class="preview-header"'), html.indexOf('id="preview-scroll"'));
   assert.doesNotMatch(previewHeader, /btn-dark-mode/);
 });
+
+test('surfaces drop decorative stripes, blur, lifts, and shouting eyebrows', () => {
+  const cardVariants = css.slice(css.indexOf('.section-card--intro'), css.indexOf('.section-card--custom') + 400);
+  assert.doesNotMatch(cardVariants, /linear-gradient\(90deg/);
+  assert.doesNotMatch(balancedBlockAfter(css, /\n\.modal-overlay\s*\{/), /backdrop-filter/);
+  assert.match(balancedBlockAfter(css, /\n\.modal-content\s*\{/), /border-radius\s*:\s*var\(--radius-lg\)/);
+  assert.doesNotMatch(css, /:hover[^{]*\{[^}]*translateY\(-/);
+  for (const selector of ['.form-label', '.sidebar-header', '.preview-header-title', '.library-groups-header']) {
+    const block = balancedBlockAfter(css, new RegExp(`\\n${escapeRegex(selector)}\\s*\\{`));
+    assert.doesNotMatch(block, /text-transform\s*:\s*uppercase/, `${selector} should not be an uppercase eyebrow`);
+  }
+  assert.doesNotMatch(html, /empty-state-kicker/);
+});
+
+test('shortcut sheet lists every shortcut the app handles', () => {
+  const sheet = html.slice(html.indexOf('id="shortcuts-modal"'), html.indexOf('id="btn-shortcuts-close"'));
+  for (const entry of ['Cmd/Ctrl + F', 'Esc', 'Alt + Up/Down', 'Enter']) {
+    assert.ok(sheet.includes(entry), `missing ${entry}`);
+  }
+  assert.match(sheet, /Save to Library/);
+});
+
+test('user-facing labels use sentence case', () => {
+  for (const title of ['Import Text', 'Save Version', 'Replace All', 'Save Group', 'Save Section', 'Import from Text', 'New Group', 'Collect Section', 'Keyboard Shortcuts']) {
+    assert.ok(!html.includes(`>${title}<`), `"${title}" should be sentence case`);
+  }
+});

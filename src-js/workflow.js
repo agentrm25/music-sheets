@@ -119,7 +119,9 @@
     const groupNames = new Map(app.getGroups().map(group => [group.id, group.name]));
     const groupName = id => groupNames.get(id) || 'Ungrouped';
 
-    if (selected === 'ungrouped') {
+    if (selected === 'favorites') {
+      charts = charts.filter(chart => chart.isFavorite);
+    } else if (selected === 'ungrouped') {
       charts = charts.filter(chart => !chart.groupId);
     } else if (selected !== 'all') {
       charts = charts.filter(chart => chart.groupId === selected);
@@ -176,7 +178,8 @@
     const groups = app.getGroups();
     list.innerHTML = '';
 
-    list.appendChild(createGroupButton('all', 'All Charts', charts.length));
+    list.appendChild(createGroupButton('all', 'All charts', charts.length));
+    list.appendChild(createGroupButton('favorites', 'Favorites', charts.filter(chart => chart.isFavorite).length));
     list.appendChild(createGroupButton('ungrouped', 'Ungrouped', charts.filter(chart => !chart.groupId).length));
 
     groups.forEach(group => {
@@ -207,7 +210,12 @@
       deleteBtn.setAttribute('aria-label', `Delete group ${group.name}`);
       deleteBtn.addEventListener('click', e => {
         e.stopPropagation();
-        app.showConfirm(`Delete "${group.name}"?`, () => app.deleteGroup(group.id));
+        const chartCount = charts.filter(chart => chart.groupId === group.id).length;
+        if (chartCount) {
+          app.showAlert(`Move the ${app.pluralize(chartCount, 'chart')} in "${group.name}" to another group before deleting it.`, 'Group isn’t empty');
+          return;
+        }
+        app.showConfirm(`This deletes the empty group "${group.name}".`, () => app.deleteGroup(group.id), { title: 'Delete group?', confirmLabel: 'Delete group' });
       });
 
       actions.appendChild(editBtn);
@@ -336,7 +344,7 @@
     deleteBtn.setAttribute('aria-label', `Delete ${chart.name}`);
     deleteBtn.addEventListener('click', e => {
       e.stopPropagation();
-      app.showConfirm(`Delete "${chart.name}" permanently?`, () => app.deleteChartFromLibrary(chart.data.id));
+      app.showConfirm(`This deletes "${chart.name}" from your Library. Export JSON first if you want a backup.`, () => app.deleteChartFromLibrary(chart.data.id), { title: 'Delete chart?', confirmLabel: 'Delete chart' });
     });
     footer.appendChild(deleteBtn);
 
@@ -466,7 +474,7 @@
 
     const items = app.getCollectedSections();
     if (!items.length) {
-      list.appendChild(createEmptyMessage('Nothing collected yet', 'Use the star action on a section card to save reusable sections here.'));
+      list.appendChild(createEmptyMessage('Nothing collected yet', 'Open a section’s Options menu and choose Collect to save it here for reuse.'));
       return;
     }
 
@@ -579,7 +587,7 @@
     const title = $('group-modal-title');
     const input = $('group-name-input');
     if (!modal || !title || !input) return;
-    title.textContent = group ? 'Rename Group' : 'New Group';
+    title.textContent = group ? 'Rename group' : 'New group';
     input.value = group ? group.name : '';
     app.openModal(modal, { initialFocus: input });
   };

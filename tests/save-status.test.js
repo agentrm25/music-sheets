@@ -241,7 +241,7 @@ test('Find and Replace reveal the editor from compact panels and restore the pri
     const env = createApp();
     const workspace = env.addElement('editor-view');
     const search = env.addElement('search-replace-bar');
-    search.style = { display: 'none' };
+    search.hidden = true;
     const field = env.addElement(fieldId, 'input');
     let focusedPanel = null;
     field.focus = () => { focusedPanel = workspace.dataset.panel; };
@@ -249,9 +249,9 @@ test('Find and Replace reveal the editor from compact panels and restore the pri
     env.app.openSearchReplace(mode);
     assert.equal(workspace.dataset.panel, 'editor');
     assert.equal(focusedPanel, 'editor', 'Reveal the editor before focusing its search field');
-    assert.equal(search.style.display, 'flex');
+    assert.equal(search.hidden, false);
     env.app.closeSearchReplace();
-    assert.equal(search.style.display, 'none');
+    assert.equal(search.hidden, true);
     assert.equal(workspace.dataset.panel, panel);
 
     env.app.openSearchReplace(mode);
@@ -279,4 +279,30 @@ test('typing does not re-read and normalize the whole Library on every keystroke
 
   await env.app.saveChartToLibrary();
   assert.equal(env.libraryStatus(), 'Saved to Library');
+});
+
+test('a failed folder mirror stays visible in the Library status after the toast fades', async () => {
+  const env = createApp();
+  env.app.state.title = 'Mirrored';
+  env.app.saveChartFileToDirectory = async () => { throw new Error('Permission denied'); };
+  await env.app.saveChartToLibrary();
+  assert.equal(env.libraryStatus(), 'Saved to Library · folder sync failed');
+  env.app.saveChartFileToDirectory = async () => '/songs/Mirrored.json';
+  await env.app.saveChartToLibrary();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+});
+
+test('Library offers a Favorites filter so starring a chart does something', () => {
+  const env = createApp();
+  const list = env.addElement('library-group-list');
+  env.addElement('library-card-grid');
+  env.data.set(LIBRARY_KEY, JSON.stringify([
+    { name: 'Loved', savedAt: '2026-01-02T00:00:00.000Z', isFavorite: true, data: { id: 'a', title: 'Loved', sections: [] } },
+    { name: 'Other', savedAt: '2026-01-01T00:00:00.000Z', data: { id: 'b', title: 'Other', sections: [] } }
+  ]));
+  env.app.renderGroups();
+  const labels = descendants(list).filter(element => element.tagName === 'span').map(element => element.textContent);
+  assert.ok(labels.includes('Favorites'));
+  const favoritesIndex = labels.indexOf('Favorites');
+  assert.equal(labels[favoritesIndex + 1], 1);
 });

@@ -174,6 +174,9 @@
     if (!nativeAvailable) {
       status.textContent = 'Folder saving is available in the desktop app.';
       status.className = 'settings-status info';
+    } else if (settings.saveDirectory && app.folderSyncError) {
+      status.textContent = `The last folder save failed: ${app.folderSyncError}`;
+      status.className = 'settings-status error';
     } else if (settings.saveDirectory) {
       status.textContent = 'Saved songs will also be written as JSON files.';
       status.className = 'settings-status success';
@@ -348,11 +351,14 @@
 
       try {
         const filePath = await app.saveChartFileToDirectory(entry);
+        app.folderSyncError = null;
         if (!options.silent) app.showToast(filePath ? `"${name}" saved to folder` : `"${name}" saved`, 'success');
       } catch (fileErr) {
         console.error('Folder save failed:', fileErr);
-        if (!options.silent) app.showToast(`"${name}" saved locally; folder save failed`, 'error');
+        app.folderSyncError = fileErr && fileErr.message ? fileErr.message : 'Unknown error';
+        if (!options.silent) app.showToast(`"${name}" saved to Library; folder save failed`, 'error');
       }
+      if (app.updateLibrarySaveStatus) app.updateLibrarySaveStatus();
     } catch (e) {
       console.error('Library save failed:', e);
       if (e.name === 'QuotaExceededError' || e.code === 22) {
@@ -396,7 +402,7 @@
     if (!app.getSavedCharts().some(chart => chart.data.id === id)) return;
     const load = () => app.loadChartFromLibrary(id);
     if (app.isCurrentChartDirty()) {
-      app.showConfirm('Load chart? Unsaved changes to the current chart will be lost.', load);
+      app.showConfirm('Unsaved changes to the current chart will be lost.', load, { title: 'Open this chart?', confirmLabel: 'Open chart' });
     } else {
       load();
     }
@@ -594,7 +600,7 @@
   app.requestDeleteCollectedSection = function(id) {
     const item = app.getCollectedSections().find(entry => entry.id === id);
     if (!item) return;
-    app.showConfirm(`Delete "${item.name}" permanently?`, () => app.deleteCollectedSection(id));
+    app.showConfirm(`This deletes "${item.name}" from Collected sections.`, () => app.deleteCollectedSection(id), { title: 'Delete collected section?', confirmLabel: 'Delete' });
   };
 
   app.isCurrentChartDirty = function() {
@@ -671,7 +677,7 @@
     };
 
     if (app.isCurrentChartDirty()) {
-      app.showConfirm('Restore this version? Unsaved library changes to the current chart will be lost.', restore);
+      app.showConfirm('Unsaved changes to the current chart will be lost.', restore, { title: 'Restore this version?', confirmLabel: 'Restore version' });
     } else {
       restore();
     }

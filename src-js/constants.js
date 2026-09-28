@@ -36,6 +36,33 @@
     return app.prefersReducedMotion() ? 'auto' : 'smooth';
   };
 
+  app.pluralize = function(count, noun) {
+    return `${count} ${noun}${count === 1 ? '' : 's'}`;
+  };
+
+  const busyButtons = new Set();
+
+  // Disable the triggering button while `task` runs and ignore re-entry
+  // (e.g. Cmd+E pressed twice while a PDF is still generating).
+  app.runWithBusyButton = async function(buttonId, task) {
+    if (busyButtons.has(buttonId)) return;
+    busyButtons.add(buttonId);
+    const button = typeof document !== 'undefined' ? document.getElementById(buttonId) : null;
+    if (button) {
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+    }
+    try {
+      await task();
+    } finally {
+      busyButtons.delete(buttonId);
+      if (button) {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      }
+    }
+  };
+
   app.SEARCH_DEBOUNCE_MS = 120;
 
   // Run `callback` once input has paused for `delay` ms.

@@ -121,3 +121,27 @@ test('preview fit follows available width, respects manual zoom and recovers aft
   app.applyZoom();
   assert.equal(app.previewZoom, 50, 'fit resumes when the preview becomes visible');
 });
+
+test('zoom controls share one range and disable at its ends', () => {
+  const elements = {
+    'chart-paper': { offsetWidth: 612, style: {} },
+    'chart-wrapper': { style: {} },
+    'preview-scroll': { clientWidth: 60, style: { paddingLeft: '0px', paddingRight: '0px' } },
+    'zoom-level': { textContent: '' },
+    'btn-zoom-in': { disabled: false },
+    'btn-zoom-out': { disabled: false }
+  };
+  const app = createApp({
+    document: { getElementById: id => elements[id] },
+    getComputedStyle: element => element.style
+  });
+  app.fitPreview();
+  assert.equal(app.previewZoom, app.ZOOM_MIN, 'fit never shrinks below the manual minimum');
+  assert.equal(elements['btn-zoom-out'].disabled, true);
+  assert.equal(elements['btn-zoom-in'].disabled, false);
+  app.previewAutoFit = false;
+  app.previewZoom = app.ZOOM_MAX;
+  app.applyZoom();
+  assert.equal(elements['btn-zoom-in'].disabled, true);
+  assert.equal(elements['btn-zoom-out'].disabled, false);
+});
