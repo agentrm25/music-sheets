@@ -153,7 +153,6 @@
   }
 
   function refreshLibrarySurfaces() {
-    if (app.renderSavedCharts) app.renderSavedCharts();
     if (app.renderFullLibrary) app.renderFullLibrary();
     if (app.renderInfoPanel) app.renderInfoPanel();
     if (app.renderVersions) app.renderVersions();
@@ -167,6 +166,10 @@
     if (!status || !folderInput || !chooseBtn || !clearBtn) return;
 
     const nativeAvailable = !!getTauriInvoke();
+    // The backup folder only exists in the desktop app; don't show a control
+    // that can never work.
+    const section = document.getElementById('settings-folder-section');
+    if (section) section.hidden = !nativeAvailable;
     folderInput.value = settings.saveDirectory || '';
     chooseBtn.disabled = !nativeAvailable;
     clearBtn.disabled = !settings.saveDirectory;
@@ -394,9 +397,8 @@
       if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       if (app.showWorkspace) app.showWorkspace('editor');
       if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
-      if (app.showEditorTab) app.showEditorTab('sections');
-      const editTarget = document.querySelector('#editor-sections .section-card:not(.collapsed) .line-input') ||
-        document.getElementById('btn-add-section-top') || document.getElementById('input-title');
+      const editTarget = document.querySelector('#section-list .section-card:not(.collapsed) .line-input') ||
+        document.getElementById('input-title');
       editTarget?.focus();
       app.autoSave(true);
       app.showToast(`Loaded "${chart.name}"`, 'info');
@@ -406,7 +408,9 @@
   app.requestLoadChartFromLibrary = function(id) {
     if (!app.getSavedCharts().some(chart => chart.data.id === id)) return;
     const load = () => app.loadChartFromLibrary(id);
-    if (app.isCurrentChartDirty()) {
+    // An empty new chart has nothing to lose, so don't ask.
+    const hasWork = app.chartHasContent ? app.chartHasContent(app.state) : true;
+    if (hasWork && app.isCurrentChartDirty()) {
       app.showConfirm('Unsaved changes to the current chart will be lost.', load, { title: 'Open this chart?', confirmLabel: 'Open chart' });
     } else {
       load();
@@ -562,7 +566,7 @@
       section: cloneData(section)
     });
     app.saveCollectedSections(items);
-    app.showToast(`Collected "${trimmed}"`, 'success');
+    app.showToast(`Saved "${trimmed}" to My sections`, 'success');
     return true;
   };
 
@@ -581,18 +585,14 @@
     return copy;
   };
 
-  app.insertCollectedSection = function(id) {
+  // placement: 'auto' (after the section being worked on), 'top' or 'end'.
+  app.insertCollectedSection = function(id, placement = 'end') {
     const item = app.getCollectedSections().find(entry => entry.id === id);
     if (!item) return;
     app.pushUndo();
     const copy = app.cloneSectionForInsert(item.section);
-    app.state.sections.push(copy);
-    app.commitChange();
-    app.showToast(`Inserted "${item.name}"`, 'success');
-    setTimeout(() => {
-      const card = document.querySelector(`[data-section-id="${copy.id}"]`);
-      if (card) card.scrollIntoView({ behavior: app.scrollBehavior(), block: 'center' });
-    }, 50);
+    app.insertSection(copy, placement);
+    app.showToast(`Added "${item.name}"`, 'success', { undo: true });
   };
 
   app.deleteCollectedSection = function(id) {
@@ -605,7 +605,7 @@
   app.requestDeleteCollectedSection = function(id) {
     const item = app.getCollectedSections().find(entry => entry.id === id);
     if (!item) return;
-    app.showConfirm(`This deletes "${item.name}" from Collected sections.`, () => app.deleteCollectedSection(id), { title: 'Delete collected section?', confirmLabel: 'Delete' });
+    app.showConfirm(`This deletes "${item.name}" from My sections. Charts that already use it keep their copy.`, () => app.deleteCollectedSection(id), { title: 'Delete saved section?', confirmLabel: 'Delete' });
   };
 
   app.isCurrentChartDirty = function() {
@@ -617,12 +617,23 @@
   // invalidates it, while repeated keystrokes skip parsing the whole Library.
   let savedFingerprintCache = { raw: null, chartId: null, fingerprint: null };
 
+  // Collapsing or resizing a section changes how the chart is viewed, not the
+  // chart, so it never makes the Library copy out of date.
+  function chartFingerprint(state) {
+    const normalized = app.normalizeState(state);
+    normalized.sections.forEach(section => {
+      section.collapsed = false;
+      section.editorHeight = '';
+    });
+    return JSON.stringify(normalized);
+  }
+
   function getSavedChartFingerprint(chartId) {
     const raw = localStorage.getItem(STORAGE_CHARTS_KEY);
     const cache = savedFingerprintCache;
     if (cache.raw === raw && cache.chartId === chartId) return cache.fingerprint;
     const chart = app.getSavedCharts().find(c => c.data.id === chartId);
-    const fingerprint = chart ? JSON.stringify(app.normalizeState(chart.data)) : null;
+    const fingerprint = chart ? chartFingerprint(chart.data) : null;
     savedFingerprintCache = { raw, chartId, fingerprint };
     return fingerprint;
   }
@@ -631,7 +642,7 @@
     if (!app.state || !app.state.id) return 'unsaved';
     const savedFingerprint = getSavedChartFingerprint(app.state.id);
     if (savedFingerprint === null) return 'unsaved';
-    return JSON.stringify(app.normalizeState(app.state)) === savedFingerprint ? 'saved' : 'pending';
+    return chartFingerprint(app.state) === savedFingerprint ? 'saved' : 'pending';
   };
 
   app.saveChartVersion = function(name, notes) {
@@ -678,7 +689,8 @@
       if (app.updateStatusBar) app.updateStatusBar();
       if (app.refreshWorkflowPanels) app.refreshWorkflowPanels();
       app.autoSave(true);
-      app.showToast(`Restored "${version.name}"`, 'info');
+      if (app.closeVersionsModal) app.closeVersionsModal();
+      app.showToast(`Restored "${version.name}"`, 'info', { undo: true });
     };
 
     if (app.isCurrentChartDirty()) {

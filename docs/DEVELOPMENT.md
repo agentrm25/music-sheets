@@ -155,14 +155,15 @@ Do not commit QA screenshots, replay logs, disposable paths, local performance c
 | --- | --- |
 | `src-js/constants.js` | Section metadata and chart colors |
 | `src-js/state.js` | State factory, normalization, IDs, numeric bounds, templates |
-| `src-js/storage.js` | Autosave, library, groups, versions, collected sections, settings, mirror writes |
-| `src-js/editor.js` | Section cards, line editors, pointer/keyboard reorder, section text scale |
+| `src-js/storage.js` | Autosave, library, groups, versions, saved sections (My sections), settings, mirror writes |
+| `src-js/editor.js` | Section cards and option menus, line editors, add-line control, section insertion and templates, pointer/keyboard reorder |
 | `src-js/preview.js` | Live chart rendering, line fitting, zoom, page-break estimates |
 | `src-js/import-export.js` | Text/JSON import, JSON export, PDF generation |
 | `src-js/transpose.js` | Chord parsing and semitone transposition |
 | `src-js/undo.js` | Bounded chart history and text-edit batching |
-| `src-js/ui.js` | Dialog stack, toasts, library list, find/replace |
-| `src-js/workflow.js` | Full Library, groups, versions, Info, collected-section UI |
+| `src-js/ui.js` | Dialog stack, toasts (with Undo), save status, transpose readout, find/replace |
+| `src-js/workflow.js` | Library, groups, version history, private chart info, Add section menus (templates and My sections), toolbar context |
+| `src-js/workspace.js` | Edit/Preview panel switching, shared menu behavior, chart starter |
 
 Modules extend the shared `window.ChartApp` object and are loaded in the order declared near the end of `index.html`. When adding a module, update both the script order and `build.js` inputs if necessary.
 
@@ -194,7 +195,7 @@ Read operations for legacy storage must remain side-effect free. Apply migration
 
 ## Output contracts
 
-JSON export contains current chart state, including Info fields. It intentionally excludes application-level collections such as all saved charts, groups, favorites, versions, and collected sections.
+JSON export contains current chart state, including private info fields. It intentionally excludes application-level collections such as all saved charts, groups, favorites, versions, and saved sections (My sections).
 
 PDF export is implemented directly with bundled jsPDF. The exporter, not the live preview, is authoritative for pagination and exact output. Review [PDF Output Reference](PDF_OUTPUT.md) before changing chart typography, scaling, colors, metadata order, or page budgeting.
 

@@ -691,6 +691,11 @@ test('B07 chart-load requests warn only when the normalized current chart is dir
     assert.deepEqual(loads, ['two']);
     confirmations[0].callback();
     assert.deepEqual(loads, ['two', 'one']);
+
+    environment.app.state = environment.app.createEmptyChart();
+    environment.app.requestLoadChartFromLibrary('two');
+    assert.equal(confirmations.length, 1, 'an empty new chart opens without asking');
+    assert.deepEqual(loads, ['two', 'one', 'two']);
   } finally {
     environment.restore();
   }
@@ -857,7 +862,6 @@ test('B03 find-replace opens the correct workspace and restores focus on close',
   try {
     const transitions = [];
     environment.app.showWorkspace = value => transitions.push(`workspace:${value}`);
-    environment.app.showEditorTab = value => transitions.push(`tab:${value}`);
     environment.app.renderPreview = () => {};
     freshRequire('src-js/ui.js');
     opener.focus();
@@ -866,7 +870,7 @@ test('B03 find-replace opens the correct workspace and restores focus on close',
 
     assert.equal(bar.hidden, false);
     assert.equal(document.activeElement, replace);
-    assert.deepEqual(transitions, ['workspace:editor', 'tab:sections']);
+    assert.deepEqual(transitions, ['workspace:editor']);
     environment.app.closeSearchReplace();
     assert.equal(bar.hidden, true);
     assert.equal(document.activeElement, opener);
@@ -989,9 +993,7 @@ function bootApplication({ theme = 'dark' } = {}) {
   environment.app.saveChartToLibrary = () => { calls.saveLibrary += 1; };
   environment.app.importJSON = () => {};
   environment.app.parseImportText = () => [];
-  environment.app.determineUseFlats = () => false;
-  environment.app.transposeNote = value => value;
-  environment.app.transposeChordLine = value => value;
+  freshRequire('src-js/transpose.js');
 
   freshRequire('src-js/constants.js');
   freshRequire('app.js');
@@ -1297,7 +1299,7 @@ test('B14 modal trap redirects Tab when focus is already outside the dialog', ()
   }
 });
 
-test('B03 closing find restores the workspace, tab, and visible opener', () => {
+test('B03 closing find restores the workspace and visible opener', () => {
   const document = new FakeDocument();
   const opener = document.register('full-library-search', 'input');
   const bar = document.register('search-replace-bar');
@@ -1310,16 +1312,10 @@ test('B03 closing find restores the workspace, tab, and visible opener', () => {
   const environment = installEnvironment({ document });
   try {
     environment.app.activeWorkspace = 'library';
-    environment.app.activeEditorTab = 'info';
     const workspaces = [];
-    const tabs = [];
     environment.app.showWorkspace = mode => {
       workspaces.push(mode);
       environment.app.activeWorkspace = mode;
-    };
-    environment.app.showEditorTab = tab => {
-      tabs.push(tab);
-      environment.app.activeEditorTab = tab;
     };
     freshRequire('src-js/ui.js');
     opener.focus();
@@ -1328,7 +1324,6 @@ test('B03 closing find restores the workspace, tab, and visible opener', () => {
     environment.app.closeSearchReplace();
 
     assert.deepEqual(workspaces, ['editor', 'library']);
-    assert.deepEqual(tabs, ['sections', 'info']);
     assert.equal(document.activeElement.id, opener.id);
   } finally {
     environment.restore();
@@ -1360,7 +1355,6 @@ test('B03 leaving the editor dismisses find without restoring its old workspace'
     freshRequire('src-js/workflow.js');
     environment.app.renderFullLibrary = () => {};
     environment.app.activeWorkspace = 'editor';
-    environment.app.activeEditorTab = 'info';
     opener.focus();
 
     environment.app.openSearchReplace('find');
@@ -1502,44 +1496,7 @@ test('B15 editor line and section controls expose keyboard controls and bounded 
   }
 });
 
-test('B15 editor tabs synchronize ARIA state and support arrow-key navigation', () => {
-  const document = new FakeDocument();
-  const environment = installEnvironment({ document });
-  try {
-    freshRequire('src-js/state.js');
-    const names = ['sections', 'versions', 'info', 'collected'];
-    const tabs = names.map((name, index) => {
-      const tab = document.register(`${name}-tab`, 'button');
-      tab.setAttribute('data-editor-tab', name);
-      tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-      tab.tabIndex = index === 0 ? 0 : -1;
-      const panel = document.register(`${name}-tab-panel`);
-      panel.setAttribute('data-editor-tab-panel', name);
-      return tab;
-    });
-    environment.app.getSavedCharts = () => [];
-    environment.app.getGroups = () => [];
-    environment.app.getCollectedSections = () => [];
-    environment.app.renderGroupOptions = () => {};
-    freshRequire('src-js/workflow.js');
-    environment.app.bindWorkflowEvents();
-
-    environment.app.showEditorTab('info');
-    assert.equal(tabs[2].getAttribute('aria-selected'), 'true');
-    assert.equal(tabs[2].tabIndex, 0);
-    assert.equal(tabs[0].getAttribute('aria-selected'), 'false');
-    assert.equal(tabs[0].tabIndex, -1);
-
-    tabs[2].focus();
-    tabs[2].dispatchEvent(makeEvent('keydown', { key: 'ArrowRight' }));
-    assert.equal(document.activeElement, tabs[3]);
-    assert.equal(environment.app.activeEditorTab, 'collected');
-  } finally {
-    environment.restore();
-  }
-});
-
-test('B07 and B15 full-library cards use an explicit accessible Open action', () => {
+test('B07 and B15 library cards open from the card or a named title button, with secondary actions in a menu', () => {
   const document = new FakeDocument();
   const grid = document.register('library-card-grid');
   document.register('library-group-list');
@@ -1564,22 +1521,32 @@ test('B07 and B15 full-library cards use an explicit accessible Open action', ()
     environment.app.renderFullLibrary();
     const card = grid.querySelector('.library-card');
     assert.equal(card.getAttribute('role'), null);
-    const openButton = card.querySelectorAll('button').find(button => /^Open$/.test(button.textContent));
-    assert.ok(openButton, 'Expected an explicit Open button');
+    assert.ok(card.classList.contains('is-open'), 'the chart being edited is marked');
+    assert.equal(card.querySelector('.library-card-badge').textContent, 'Open now');
+    const openButton = card.querySelector('.library-card-title');
+    assert.equal(openButton.tagName, 'BUTTON');
+    assert.equal(openButton.getAttribute('aria-label'), 'Open Chart');
     const favoriteButton = card.querySelector('.favorite-btn');
     assert.match(favoriteButton.getAttribute('aria-label'), /favorite/i);
-    const groupSelect = card.querySelector('.library-card-group-select');
+    const menu = card.querySelector('.library-card-menu');
+    assert.match(menu.querySelector('summary').getAttribute('aria-label'), /options for chart/i);
+    const groupSelect = menu.querySelector('.library-card-group-select');
     assert.match(groupSelect.getAttribute('aria-label'), /group/i);
+    assert.ok(menu.querySelectorAll('button').some(button => button.getAttribute('aria-label') === 'Delete Chart'));
     openButton.click();
     assert.deepEqual(requested, ['chart']);
+    card.click();
+    assert.deepEqual(requested, ['chart', 'chart']);
   } finally {
     environment.restore();
   }
 });
 
-test('B17 collected-card Delete delegates to the confirmed request path', () => {
+test('B17 My sections in the Add section menu insert and delete through the confirmed path', () => {
   const document = new FakeDocument();
-  const list = document.register('collected-list');
+  const menu = document.register('add-section-menu', 'details');
+  const list = document.register('add-section-panel', 'div', menu);
+  list.setAttribute('data-add-section-panel', '');
   const environment = installEnvironment({ document });
   try {
     freshRequire('src-js/constants.js');
@@ -1593,16 +1560,22 @@ test('B17 collected-card Delete delegates to the confirmed request path', () => 
       savedAt: '2026-07-15T00:00:00.000Z',
       section: environment.app.createSection('chorus')
     }];
-    environment.app.insertCollectedSection = () => {};
+    const inserted = [];
+    environment.app.insertCollectedSection = (id, placement) => inserted.push([id, placement]);
     environment.app.deleteCollectedSection = () => assert.fail('UI must not delete directly');
     const requested = [];
     environment.app.requestDeleteCollectedSection = id => requested.push(id);
     freshRequire('src-js/workflow.js');
 
     environment.app.renderCollectedSections();
-    const deleteButton = list.querySelectorAll('button').find(button => button.textContent === 'Delete');
+    const insertButton = list.querySelectorAll('button').find(button => button.getAttribute('aria-label') === 'Add Reusable');
+    insertButton.click();
+    assert.deepEqual(inserted, [['item', 'auto']]);
+    const deleteButton = list.querySelectorAll('button').find(button => button.getAttribute('aria-label') === 'Delete Reusable');
     deleteButton.click();
     assert.deepEqual(requested, ['item']);
+    const templates = list.querySelectorAll('button').filter(button => button.dataset.template !== undefined);
+    assert.equal(templates.length, environment.app.SECTION_TEMPLATES.length);
   } finally {
     environment.restore();
   }
@@ -1871,7 +1844,7 @@ test('B05 JSON export uses a readable fallback filename for sanitized-empty titl
 test('workspace panel switching preserves chart content and updates accessible selection', () => {
   const document = new FakeDocument();
   const workspace = document.register('editor-view');
-  const buttons = ['details', 'editor', 'preview'].map(panel => {
+  const buttons = ['editor', 'preview'].map(panel => {
     const button = document.register(`btn-panel-${panel}`, 'button');
     button.setAttribute('data-workspace-panel', panel);
     button.dataset.workspacePanel = panel;
@@ -1886,18 +1859,18 @@ test('workspace panel switching preserves chart content and updates accessible s
     environment.app.previewAutoFit = true;
     environment.app.fitPreview = () => { fitCount += 1; };
     environment.app.bindWorkspaceEvents();
-    buttons[0].click();
-    assert.equal(workspace.dataset.panel, 'details');
-    assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
-    assert.equal(buttons[1].getAttribute('aria-pressed'), 'false');
-    buttons[2].click();
+    buttons[1].click();
     assert.equal(workspace.dataset.panel, 'preview');
     assert.equal(buttons[0].getAttribute('aria-pressed'), 'false');
-    assert.equal(buttons[2].getAttribute('aria-pressed'), 'true');
+    assert.equal(buttons[1].getAttribute('aria-pressed'), 'true');
+    environment.app.showWorkspacePanel('details');
+    assert.equal(workspace.dataset.panel, 'editor', 'song details live in the editor');
+    assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+    buttons[1].click();
     environment.app.showWorkspacePanel('invalid');
     assert.equal(workspace.dataset.panel, 'preview');
     assert.equal(environment.app.state, originalState);
-    assert.equal(fitCount, 2);
+    assert.equal(fitCount, 3);
   } finally {
     environment.restore();
   }
@@ -2064,7 +2037,7 @@ test('deleting a line moves focus to the neighbouring line instead of the page b
     deleteFirst.focus();
     deleteFirst.click();
     assert.equal(section.lines.length, 0);
-    assert.equal(document.activeElement.dataset.focusKey, 'add-lyric');
+    assert.equal(document.activeElement.dataset.focusKey, 'add-line');
   } finally {
     environment.restore();
   }
@@ -2104,34 +2077,6 @@ test('only sections added since the previous render play the entrance animation'
     const cards = document.querySelectorAll('.section-card');
     assert.equal(cards[0].classList.contains('is-new'), false);
     assert.equal(cards[1].classList.contains('is-new'), true);
-  } finally {
-    environment.restore();
-  }
-});
-
-test('sidebar Recent list shows the five newest charts and opens them through the Library path', () => {
-  const document = new FakeDocument();
-  const list = document.register('recent-charts-list', 'ul');
-  const environment = installEnvironment({ document });
-  try {
-    freshRequire('src-js/state.js');
-    const charts = Array.from({ length: 7 }, (_, index) => {
-      const entry = savedEntry(environment.app, `chart-${index}`, `Chart ${index}`);
-      entry.savedAt = new Date(Date.UTC(2026, 0, index + 1)).toISOString();
-      return entry;
-    });
-    environment.app.getSavedCharts = () => charts.map(chart => ({ ...chart }));
-    const requested = [];
-    environment.app.requestLoadChartFromLibrary = id => requested.push(id);
-    freshRequire('src-js/ui.js');
-
-    environment.app.renderSavedCharts();
-    const buttons = list.querySelectorAll('button.recent-chart');
-    assert.equal(buttons.length, 5);
-    assert.equal(buttons[0].getAttribute('aria-label'), 'Open Chart 6');
-    assert.equal(list.children.every(child => child.tagName === 'LI'), true);
-    buttons[1].click();
-    assert.deepEqual(requested, ['chart-5']);
   } finally {
     environment.restore();
   }
@@ -2183,7 +2128,7 @@ test('repeated section actions keep their visible words in the accessible name',
   try {
     environment.app.state.sections.push(environment.app.createSection('chorus'));
     environment.app.renderEditor();
-    for (const [key, word] of [['collect', 'Collect'], ['duplicate', 'Duplicate'], ['delete-section', 'Delete']]) {
+    for (const [key, word] of [['collect', 'Save'], ['duplicate', 'Duplicate'], ['delete-section', 'Delete']]) {
       const button = document.querySelector(`[data-focus-key="${key}"]`);
       assert.ok(button.getAttribute('aria-label').startsWith(word), `${key} label should start with ${word}`);
       assert.match(button.getAttribute('aria-label'), /CHORUS/);
@@ -2391,6 +2336,288 @@ test('busy buttons stay focusable so keyboard users keep their place', async () 
     await running;
     assert.equal(button.getAttribute('aria-disabled'), null);
     assert.equal(button.getAttribute('aria-busy'), null);
+  } finally {
+    environment.restore();
+  }
+});
+
+// --- UX simplification audit (2026-10-11) ---------------------------------
+
+test('transposing keeps the Key select on an offered spelling for every key', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/transpose.js');
+    const { app } = environment;
+    const majors = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+    const minors = ['Cm', 'C#m', 'Dm', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'Bbm', 'Bm'];
+    const offered = new Set([...majors, ...minors]);
+    for (const key of [...majors, ...minors]) {
+      for (const step of [1, -1, 5]) {
+        const next = app.transposeKey(key, step);
+        assert.ok(offered.has(next), `${key} ${step > 0 ? '+' : ''}${step} became ${next}, which the Key select does not offer`);
+      }
+    }
+    assert.equal(app.transposeKey('G', 1), 'Ab');
+    assert.equal(app.transposeKey('A', 1), 'Bb');
+    assert.equal(app.transposeKey('D', 1), 'Eb');
+    assert.equal(app.transposeKey('F', 1), 'F#');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('minor keys transpose with their chords and keep their mode', () => {
+  const environment = installEnvironment();
+  try {
+    freshRequire('src-js/transpose.js');
+    const { app } = environment;
+    assert.equal(app.transposeKey('Am', 1), 'Bbm');
+    assert.equal(app.transposeKey('Am', 3), 'Cm');
+    assert.equal(app.transposeKey('Em', -1), 'Ebm');
+    assert.equal(app.canonicalKey('Dbm'), 'C#m');
+    assert.equal(app.canonicalKey('G#'), 'Ab');
+    assert.equal(app.keyOffset('E', 'G'), 3);
+    assert.equal(app.keyOffset('G', 'E'), -3);
+    assert.equal(app.keyOffset('C', 'F#'), 6);
+    assert.equal(app.keyOffset('Am', 'Am'), 0);
+    assert.equal(app.keyOffset('', 'G'), null);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('Transpose moves a minor key, shows a lasting offset, and can return to the original key', () => {
+  const { environment } = bootApplication();
+  try {
+    const { app, document } = environment;
+    app.state.key = 'Am';
+    app.state.originalKey = '';
+    app.state.sections = [app.normalizeState({ sections: [{ id: 's', type: 'verse', lines: [{ id: 'l', type: 'chord', content: 'Am G' }] }] }).sections[0]];
+    app.syncFormFromState();
+
+    document.getElementById('btn-transpose-up').click();
+    document.getElementById('btn-transpose-up').click();
+    assert.equal(app.state.key, 'Bm');
+    assert.equal(document.getElementById('input-key').value, 'Bm');
+    assert.equal(app.state.originalKey, 'Am');
+    assert.equal(app.state.sections[0].lines[0].content, 'Bm A');
+    assert.equal(document.getElementById('transpose-display').textContent, '+2 from Am');
+    assert.equal(document.getElementById('btn-transpose-reset').hidden, false);
+
+    document.getElementById('btn-transpose-reset').click();
+    assert.equal(app.state.key, 'Am');
+    assert.equal(app.state.sections[0].lines[0].content, 'Am G');
+    assert.equal(document.getElementById('transpose-display').textContent, 'Original key');
+    assert.equal(document.getElementById('btn-transpose-reset').hidden, true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('collapsing or resizing a section is not a chart Undo step', () => {
+  const { environment } = bootApplication();
+  try {
+    const { app, document } = environment;
+    const undo = document.getElementById('btn-undo');
+    app.state.title = 'Edited';
+    app.commitChange();
+    assert.equal(undo.disabled, false);
+
+    app.toggleSectionCollapse('section');
+    assert.equal(app.state.sections[0].collapsed, true);
+    app.state.sections[0].editorHeight = '240px';
+    app.commitChange();
+
+    app.undo();
+    assert.equal(app.state.title, '', 'the first Undo reverts the real edit');
+    assert.equal(app.state.sections[0].collapsed, true, 'collapse survives Undo');
+    assert.equal(app.state.sections[0].editorHeight, '240px', 'editor height survives Undo');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('Undo in a toast reverts its own change and disappears once history moves on', () => {
+  const { environment } = bootApplication();
+  try {
+    const { app, document } = environment;
+    freshRequire('src-js/ui.js');
+    const container = document.getElementById('toast-container');
+
+    app.pushUndo();
+    app.state.title = 'Deleted something';
+    app.commitChange();
+    app.showToast('Section deleted', 'info', { undo: true });
+    const first = container.children.at(-1).querySelector('.toast-action-btn');
+    assert.equal(first.textContent, 'Undo');
+
+    first.click();
+    assert.equal(app.state.title, '');
+
+    app.pushUndo();
+    app.state.title = 'Change A';
+    app.commitChange();
+    app.showToast('Change A', 'info', { undo: true });
+    const stale = container.children.at(-1);
+    app.pushUndo();
+    app.state.title = 'Change B';
+    app.commitChange();
+    assert.equal(stale.querySelector('.toast-action-btn'), null, 'an older Undo offer is withdrawn');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('Add section inserts after the section being worked on, at the top, or at the end', () => {
+  const { environment } = renderEditorEnvironment();
+  try {
+    const { app } = environment;
+    app.revealSection = () => {};
+    const intro = app.createSection('intro');
+    const chorus = app.createSection('chorus');
+    app.state.sections.push(intro, chorus);
+    app.renderEditor();
+
+    app.activeSectionId = intro.id;
+    assert.equal(app.describeSectionInsert('auto'), 'Adds after INTRO');
+    const bridge = app.addSectionFromTemplate(3, 'auto');
+    assert.deepEqual(app.state.sections.map(section => section.id), [intro.id, bridge.id, chorus.id]);
+    assert.equal(bridge.type, 'bridge');
+    assert.equal(app.activeSectionId, bridge.id, 'the new section becomes the insertion point');
+
+    const top = app.addSectionFromTemplate(4, 'top');
+    assert.equal(app.state.sections[0].id, top.id);
+    assert.equal(top.type, 'intro');
+
+    const end = app.addSectionFromTemplate(5, 'end');
+    assert.equal(app.state.sections.at(-1).id, end.id);
+    assert.equal(end.type, 'instrumental');
+
+    app.activeSectionId = null;
+    assert.equal(app.describeSectionInsert('auto'), 'Adds at the end of the chart');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('one add-line control repeats the last line type and offers every type', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const { app } = environment;
+    const section = app.createSection('verse');
+    section.lines = [app.createLine('chord', 'C G')];
+    app.state.sections.push(section);
+    app.renderEditor();
+
+    const main = document.querySelector('[data-focus-key="add-line"]');
+    assert.match(main.getAttribute('aria-label'), /Add Chord line/);
+    main.click();
+    assert.deepEqual(section.lines.map(line => line.type), ['chord', 'chord']);
+
+    const items = document.querySelector('.add-line-menu').querySelectorAll('.menu-item');
+    assert.deepEqual(items.map(item => item.textContent), ['Chord + Lyric line', 'Chord line', 'Lyric line', 'Instruction line', 'Blank line']);
+    items[4].click();
+    assert.equal(section.lines.at(-1).type, 'blank');
+    assert.equal(document.querySelectorAll('.add-line-bar').length, 1, 'one add-line control per section');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('section headers show non-default print settings and a collapsed summary; repeat works on verses', () => {
+  const { document, environment } = renderEditorEnvironment();
+  try {
+    const { app } = environment;
+    const verse = app.createSection('verse');
+    verse.lines = [Object.assign(app.createLine('grid', 'Walk **on**'), { chords: 'C  G' })];
+    verse.repeat = 2;
+    verse.fontScale = 130;
+    verse.collapsed = true;
+    app.state.sections.push(verse);
+    app.renderEditor();
+
+    const badges = document.querySelectorAll('.section-badge').map(badge => badge.textContent);
+    assert.deepEqual(badges, ['×2', 'Text 130%']);
+    assert.equal(document.querySelector('.section-collapsed-summary').textContent, 'C  G · Walk on');
+    assert.ok(document.querySelector('.section-repeat-input'), 'verses offer Repeat too');
+    assert.equal(app.getSectionPrintHeader(verse), '× 2');
+    assert.equal(app.getSectionPrintHeader(Object.assign(app.createSection('chorus'), { repeat: 3 })), 'CHORUS × 3');
+    assert.equal(app.getSectionPrintHeader(app.createSection('verse')), '');
+  } finally {
+    environment.restore();
+  }
+});
+
+test('chord-scoped replace changes whole chord tokens only and is one Undo step', () => {
+  const document = new FakeDocument();
+  document.register('search-find-input', 'input').value = 'Am';
+  document.register('search-replace-input', 'input').value = 'Am7';
+  document.register('search-regex', 'input').checked = false;
+  document.register('search-case-sensitive', 'input').checked = false;
+  document.register('search-scope', 'select').value = 'chords';
+  const environment = installEnvironment({ document });
+  try {
+    environment.app.state = {
+      sections: [{ lines: [
+        { type: 'chord', content: 'Am C Am7 Am/G' },
+        { type: 'grid', content: 'Amazing, I am here', chords: 'Am   G' },
+        { type: 'lyric', content: 'Am I dreaming' }
+      ] }]
+    };
+    let undoCount = 0;
+    freshRequire('src-js/constants.js');
+    freshRequire('src-js/ui.js');
+    environment.app.pushUndo = () => { undoCount += 1; };
+    environment.app.commitChange = () => {};
+    const toasts = [];
+    environment.app.showToast = (message, type, options) => toasts.push({ message, type, options });
+
+    environment.app.searchAndReplace();
+
+    const [chordLine, gridLine, lyricLine] = environment.app.state.sections[0].lines;
+    assert.equal(chordLine.content, 'Am7 C Am7 Am7/G');
+    assert.equal(gridLine.chords, 'Am7   G');
+    assert.equal(gridLine.content, 'Amazing, I am here', 'lyrics are out of scope');
+    assert.equal(lyricLine.content, 'Am I dreaming');
+    assert.equal(undoCount, 1);
+    assert.equal(toasts.at(-1).message, 'Replaced 3 occurrences');
+    assert.equal(toasts.at(-1).options.undo, true);
+  } finally {
+    environment.restore();
+  }
+});
+
+test('the toolbar shows chart commands only while the editor is showing', () => {
+  const document = new FakeDocument();
+  document.register('editor-view');
+  document.register('library-view');
+  document.register('btn-editor-view', 'button');
+  document.register('btn-library-view', 'button');
+  const toolbar = document.register('toolbar', 'header');
+  const undo = document.register('btn-undo', 'button', toolbar);
+  undo.classList.add('editor-only');
+  const save = document.register('btn-save-library', 'button', toolbar);
+  save.classList.add('editor-only');
+  const create = document.register('btn-library-new', 'button', toolbar);
+  create.classList.add('library-only');
+  const environment = installEnvironment({ document });
+  try {
+    environment.app.getSavedCharts = () => [];
+    environment.app.getGroups = () => [];
+    environment.app.getCollectedSections = () => [];
+    freshRequire('src-js/workflow.js');
+    environment.app.renderFullLibrary = () => {};
+
+    environment.app.showWorkspace('library');
+    assert.equal(undo.hidden, true);
+    assert.equal(save.hidden, true);
+    assert.equal(create.hidden, false);
+    assert.equal(toolbar.dataset.workspace, 'library');
+
+    environment.app.showWorkspace('editor');
+    assert.equal(undo.hidden, false);
+    assert.equal(save.hidden, false);
+    assert.equal(create.hidden, true);
   } finally {
     environment.restore();
   }

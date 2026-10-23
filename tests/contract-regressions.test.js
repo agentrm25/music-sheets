@@ -60,10 +60,10 @@ test('toolbar distinguishes library save from JSON export', () => {
   assert.doesNotMatch(html, /Cmd\/Ctrl\s*\+\s*Click/i);
 });
 
-test('all eight modal overlays expose stable accessible names', () => {
+test('all nine modal overlays expose stable accessible names', () => {
   const overlays = [...html.matchAll(/<div\b(?=[^>]*\bclass=["'][^"']*\bmodal-overlay\b[^"']*["'])[^>]*>/gi)]
     .map(match => match[0]);
-  assert.equal(overlays.length, 8);
+  assert.equal(overlays.length, 9);
 
   for (const overlay of overlays) {
     const id = attribute(overlay, 'id');
@@ -76,26 +76,29 @@ test('all eight modal overlays expose stable accessible names', () => {
 
   const titles = [...html.matchAll(/<h2\b(?=[^>]*\bclass=["'][^"']*\bmodal-title\b[^"']*["'])[^>]*>/gi)]
     .map(match => match[0]);
-  assert.equal(titles.length, 8);
+  assert.equal(titles.length, 9);
   titles.forEach(title => assert.ok(attribute(title, 'id'), 'Every modal title needs a stable id'));
   assert.equal(attribute(openingTagById('import-modal'), 'aria-describedby'), 'import-modal-description');
   assert.equal(attribute(openingTagById('confirm-modal'), 'aria-describedby'), 'confirm-message');
   assert.equal(attribute(openingTagById('alert-modal'), 'aria-describedby'), 'alert-message');
 });
 
-test('editor tabs and panels have complete ARIA relationships and initial state', () => {
-  const tabNames = ['sections', 'versions', 'info', 'collected'];
-  for (const [index, name] of tabNames.entries()) {
-    const tab = openingTagById(`${name}-tab`);
-    const panel = openingTagById(`${name}-tab-panel`);
-    assert.ok(tab, `Missing #${name}-tab`);
-    assert.equal(attribute(tab, 'role'), 'tab');
-    assert.equal(attribute(tab, 'aria-controls'), `${name}-tab-panel`);
-    assert.equal(attribute(tab, 'aria-selected'), index === 0 ? 'true' : 'false');
-    assert.equal(attribute(tab, 'tabindex'), index === 0 ? '0' : '-1');
-    assert.equal(attribute(panel, 'role'), 'tabpanel');
-    assert.equal(attribute(panel, 'aria-labelledby'), `${name}-tab`);
+test('the editor has no second tab layer: info, saved sections and versions live where they are used', () => {
+  assert.doesNotMatch(html, /role="tab"/, 'editor tabs were folded into the chart header and menus');
+  for (const id of ['sections-tab', 'versions-tab', 'info-tab', 'collected-tab', 'template-select', 'btn-add-section-top', 'btn-add-section-bottom']) {
+    assert.equal(openingTagById(id), '', `#${id} should be gone`);
   }
+  const header = html.slice(html.indexOf('id="chart-header"'), html.indexOf('id="empty-state"'));
+  for (const id of ['input-group', 'input-status', 'input-source', 'input-info-notes']) {
+    assert.ok(header.includes(`id="${id}"`), `${id} belongs to the chart header's private details`);
+  }
+  const addMenus = tagsWithAttribute('data-add-section-panel');
+  assert.equal(addMenus.length, 2, 'toolbar and end-of-chart Add section menus');
+  const saveMenu = html.slice(html.indexOf('id="save-menu"'), html.indexOf('</details>', html.indexOf('id="save-menu"')));
+  for (const id of ['btn-save-version', 'btn-version-history', 'btn-export-json']) {
+    assert.ok(saveMenu.includes(`id="${id}"`), `${id} belongs to the Save menu`);
+  }
+  assert.ok(openingTagById('versions-modal'));
 });
 
 test('static icon-only controls have accessible names and toggle state', () => {
@@ -182,12 +185,14 @@ test('editor toolbar wraps while the search toolbar retains its overflow escape'
   assert.match(css, /\.search-replace-bar\s*>\s*\*[^}]*flex-shrink\s*:\s*0/s);
 });
 
-test('compact workspace provides named controls for details, editing and preview', () => {
-  for (const [panel, target] of [['details', 'sidebar'], ['editor', 'editor-panel'], ['preview', 'preview-panel']]) {
+test('compact workspace switches between two named panels: edit and preview', () => {
+  for (const [panel, target] of [['editor', 'editor-panel'], ['preview', 'preview-panel']]) {
     const button = openingTagById(`btn-panel-${panel}`);
     assert.equal(attribute(button, 'aria-controls'), target);
     assert.equal(attribute(button, 'aria-pressed'), String(panel === 'editor'));
   }
+  assert.equal(openingTagById('btn-panel-details'), '');
+  assert.equal(openingTagById('sidebar'), '');
   assert.match(html, /src="\.\/src-js\/workspace.js"/);
   assert.ok(openingTagById('btn-start-chart'));
   assert.ok(openingTagById('btn-zoom-fit'));
@@ -240,11 +245,17 @@ test('line rows keep type, input, and actions on one compact row by default', ()
   assert.doesNotMatch(css, /\.line-type-indicator/);
 });
 
-test('sidebar shows a short Recent list that hands browsing to the Library view', () => {
-  assert.equal(openingTagById('library-search'), '');
-  assert.equal(openingTagById('library-sort'), '');
-  assert.match(openingTagById('recent-charts-list'), /^<ul\b/);
-  assert.match(elementTextById('btn-open-library'), /Open Library/);
+test('song details sit at the top of the editor, laid out like the printed header', () => {
+  const editor = html.slice(html.indexOf('id="editor-panel"'), html.indexOf('id="preview-panel"'));
+  const headerStart = editor.indexOf('id="chart-header"');
+  assert.ok(headerStart > 0, 'chart header lives in the editor column');
+  assert.ok(headerStart < editor.indexOf('id="section-list"'), 'and comes before the sections');
+  for (const id of ['input-title', 'input-artist', 'input-key', 'btn-transpose-down', 'btn-transpose-up', 'input-bpm', 'input-timesig', 'input-capo', 'transpose-display', 'btn-transpose-reset']) {
+    assert.ok(editor.includes(`id="${id}"`), `${id} belongs to the chart header`);
+  }
+  const keyControl = editor.slice(editor.indexOf('class="key-control"'), editor.indexOf('</div>', editor.indexOf('class="key-control"')));
+  assert.match(keyControl, /id="input-key"[\s\S]*id="btn-transpose-down"[\s\S]*id="btn-transpose-up"/, 'transpose sits beside Key');
+  assert.equal(openingTagById('recent-charts-list'), '');
 });
 
 const jsSources = ['app.js', ...fs.readdirSync(path.join(root, 'src-js')).map(file => `src-js/${file}`)]
@@ -281,7 +292,7 @@ test('landmarks and headings give the editor a navigable outline', () => {
 
 test('every keyboard-reachable control shows the shared focus ring', () => {
   const block = css.slice(css.indexOf('button:focus-visible,'));
-  for (const selector of ['summary:focus-visible', '.section-type-select:focus-visible', 'input[type="checkbox"]:focus-visible', '.recent-chart:focus-visible']) {
+  for (const selector of ['summary:focus-visible', '.section-type-select:focus-visible', 'input[type="checkbox"]:focus-visible', '.chart-header-title:focus-visible']) {
     assert.ok(block.includes(selector), `${selector} missing from focus ring rule`);
   }
   const coarse = balancedBlockAfter(css, /@media\s*\(pointer:\s*coarse\)/);
@@ -356,9 +367,10 @@ test('design tokens are all used and transitions name their properties', () => {
   });
 });
 
-test('appearance toggle lives with app-wide commands, not in the preview header', () => {
-  const menu = html.slice(html.indexOf('id="toolbar-more"'), html.indexOf('</details>'));
-  assert.match(menu, /id="btn-dark-mode"/);
+test('appearance lives in Settings, not in the preview header', () => {
+  const settings = html.slice(html.indexOf('id="settings-modal"'), html.indexOf('id="btn-settings-close"'));
+  assert.match(settings, /id="btn-dark-mode"/);
+  assert.match(settings, /id="settings-folder-section"/);
   const previewHeader = html.slice(html.indexOf('class="preview-header"'), html.indexOf('id="preview-scroll"'));
   assert.doesNotMatch(previewHeader, /btn-dark-mode/);
 });
@@ -369,7 +381,7 @@ test('surfaces drop decorative stripes, blur, lifts, and shouting eyebrows', () 
   assert.doesNotMatch(balancedBlockAfter(css, /\n\.modal-overlay\s*\{/), /backdrop-filter/);
   assert.match(balancedBlockAfter(css, /\n\.modal-content\s*\{/), /border-radius\s*:\s*var\(--radius-lg\)/);
   assert.doesNotMatch(css, /:hover[^{]*\{[^}]*translateY\(-/);
-  for (const selector of ['.form-label', '.sidebar-header', '.preview-header-title', '.library-groups-header']) {
+  for (const selector of ['.form-label', '.chart-header-group-title', '.preview-header-title', '.library-groups-header']) {
     const block = balancedBlockAfter(css, new RegExp(`\\n${escapeRegex(selector)}\\s*\\{`));
     assert.doesNotMatch(block, /text-transform\s*:\s*uppercase/, `${selector} should not be an uppercase eyebrow`);
   }
@@ -399,7 +411,7 @@ test('toolbar collapses to icon buttons on narrow screens without losing names',
   const narrow = balancedBlockAfter(css, /@media screen and \(max-width:\s*700px\)/);
   assert.match(narrow, /\.toolbar-actions \.btn-label\s*\{[^}]*clip/);
   assert.match(narrow, /\.toolbar-brand-text\s*\{[^}]*display\s*:\s*none/);
-  assert.match(narrow, /\.info-panel-grid\s*\{[^}]*grid-template-columns\s*:\s*minmax\(0,\s*1fr\)/);
+  assert.match(narrow, /\.chart-header-more-grid\s*\{[^}]*grid-template-columns\s*:\s*minmax\(0,\s*1fr\)/);
 });
 
 test('dialogs and the Library adapt to narrow viewports', () => {

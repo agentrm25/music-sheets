@@ -359,9 +359,7 @@
         const scaledInstructionFontSize = instructionFontSize * fontScale;
         const scaledSectionHeaderFontSize = sectionHeaderFontSize * fontScale;
         const meta = app.SECTION_META[section.type] || app.SECTION_META.custom;
-        let headerText = meta.label;
-        if (section.type === 'custom') headerText = (section.customLabel || 'SECTION').toUpperCase();
-        if (section.repeat && section.type !== 'verse') headerText += ` × ${section.repeat}`;
+        const headerText = app.getSectionPrintHeader(section);
         let headerColor = meta.color;
 
         const firstRenderedLine = section.lines.find(l => l.type === 'blank' || l.content || l.type === 'chord' || (l.type === 'grid' && l.chords));

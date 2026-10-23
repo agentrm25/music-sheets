@@ -26,305 +26,275 @@
   <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
 </svg>
 
 <div class="app-container">
 
   <!-- ===== TOOLBAR ===== -->
-  <header class="toolbar" id="toolbar">
-    <div class="toolbar-brand">
-      <div class="toolbar-brand-icon"><img src="./icon.png" alt="Icon" class="toolbar-brand-img"></div>
-      <span class="toolbar-brand-text">Chart Creator</span>
+  <header class="toolbar" id="toolbar" data-workspace="editor">
+    <div class="toolbar-start">
+      <div class="toolbar-brand">
+        <div class="toolbar-brand-icon"><img src="./icon.png" alt="" class="toolbar-brand-img"></div>
+        <span class="toolbar-brand-text">Chart Creator</span>
+      </div>
+      <div class="workspace-switcher" role="group" aria-label="Workspace">
+        <button class="workspace-switch active" id="btn-editor-view" type="button" aria-pressed="true">Editor</button>
+        <button class="workspace-switch" id="btn-library-view" type="button" aria-pressed="false">Library</button>
+      </div>
     </div>
     <div class="toolbar-actions">
-      <button class="btn btn-sm workspace-switch active" id="btn-editor-view" title="Show editor">
-        Editor
-      </button>
-      <button class="btn btn-sm workspace-switch" id="btn-library-view" title="Show library">
-        Library
-      </button>
-      <div class="toolbar-divider"></div>
-      <button class="btn btn-sm btn-primary" id="btn-save-library" title="Save to Library">
-        <span class="btn-label-long">Save to Library</span><span class="btn-label-short" aria-hidden="true">Save</span>
-      </button>
-      <button class="btn btn-sm" id="btn-undo" title="Undo (Cmd+Z)" disabled>
+      <button class="btn btn-sm btn-icon editor-only" id="btn-undo" title="Undo (Cmd+Z)" disabled>
         <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-undo"/></svg> <span class="btn-label">Undo</span>
       </button>
-      <button class="btn btn-sm" id="btn-redo" title="Redo (Cmd+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-icon editor-only" id="btn-redo" title="Redo (Cmd+Shift+Z)" disabled>
         <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-redo"/></svg> <span class="btn-label">Redo</span>
       </button>
-      <button class="btn btn-sm" id="btn-export-pdf" title="Export as PDF">
+      <button class="btn btn-sm editor-only" id="btn-export-pdf" title="Export as PDF (Cmd+E)">
         <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-download"/></svg> <span class="btn-label">Export PDF</span>
       </button>
-      <details class="toolbar-overflow" id="toolbar-more">
+      <div class="split-button editor-only">
+        <button class="btn btn-sm btn-primary" id="btn-save-library" title="Save to Library (Cmd+S)">
+          <span class="btn-label-long">Save to Library</span><span class="btn-label-short" aria-hidden="true">Save</span>
+        </button>
+        <details class="menu" id="save-menu" data-menu>
+          <summary class="btn btn-sm btn-primary split-button-toggle" aria-label="More save options" title="Versions and backup"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-chevron-down"/></svg></summary>
+          <div class="menu-panel menu-panel-end">
+            <button class="menu-item" id="btn-save-version" type="button">Save version…</button>
+            <button class="menu-item" id="btn-version-history" type="button">Version history</button>
+            <button class="menu-item" id="btn-export-json" type="button" title="Export Chart as JSON">Export JSON backup</button>
+          </div>
+        </details>
+      </div>
+      <button class="btn btn-sm btn-primary library-only" id="btn-library-new" type="button" hidden>
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> <span class="btn-label">New chart</span>
+      </button>
+      <details class="toolbar-overflow" id="toolbar-more" data-menu>
         <summary class="btn btn-sm"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-more"/></svg> <span class="btn-label">More</span></summary>
         <div class="toolbar-menu">
           <button class="btn btn-sm" id="btn-new" title="New Chart">New chart</button>
-          <button class="btn btn-sm" id="btn-load" title="Load Chart from JSON">Open JSON</button>
+          <button class="btn btn-sm" id="btn-load" title="Import chart text or a JSON file">Import…</button>
           <button class="btn btn-sm toolbar-menu-narrow" id="btn-export-pdf-menu" type="button">Export PDF</button>
-          <button class="btn btn-sm" id="btn-export-json" title="Export Chart as JSON">Export JSON</button>
           <button class="btn btn-sm" id="btn-shortcuts" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">Keyboard shortcuts</button>
-          <button class="btn btn-sm" id="btn-dark-mode" type="button" aria-label="Light mode" aria-pressed="false"><span class="theme-toggle-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-moon"/></svg></span> Light mode</button>
           <button class="btn btn-sm" id="btn-settings" title="Settings" aria-label="Settings">Settings</button>
         </div>
       </details>
     </div>
   </header>
 
-  <!-- ===== MAIN CONTENT ===== -->
+  <!-- ===== EDITOR WORKSPACE ===== -->
   <main class="main-content workspace-view active" id="editor-view" data-panel="editor">
     <h1 class="visually-hidden">Chart editor</h1>
     <nav class="panel-navigation" aria-label="Chart workspace">
-      <button class="btn btn-sm" id="btn-panel-details" data-workspace-panel="details" aria-controls="sidebar" aria-pressed="false">Song details</button>
-      <button class="btn btn-sm active" id="btn-panel-editor" data-workspace-panel="editor" aria-controls="editor-panel" aria-pressed="true">Edit chart</button>
-      <button class="btn btn-sm" id="btn-panel-preview" data-workspace-panel="preview" aria-controls="preview-panel" aria-pressed="false">Preview</button>
+      <div class="segmented" role="group" aria-label="Show">
+        <button class="segmented-option active" id="btn-panel-editor" type="button" data-workspace-panel="editor" aria-controls="editor-panel" aria-pressed="true">Edit</button>
+        <button class="segmented-option" id="btn-panel-preview" type="button" data-workspace-panel="preview" aria-controls="preview-panel" aria-pressed="false">Preview</button>
+      </div>
     </nav>
     <div class="workspace-panels">
 
-    <!-- ===== SIDEBAR (Metadata) ===== -->
-    <aside class="sidebar" id="sidebar" aria-labelledby="song-details-heading">
-      <h2 class="sidebar-header" id="song-details-heading">Song details</h2>
-
-      <div class="sidebar-section">
-        <div class="form-group">
-          <label class="form-label" for="input-title">Title</label>
-          <input class="form-input" type="text" id="input-title" placeholder="Song title…">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="input-artist">Artist</label>
-          <input class="form-input" type="text" id="input-artist" placeholder="Artist name…">
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="input-key">Key</label>
-            <select class="form-select" id="input-key">
-              <option value="">-</option>
-              <option value="C">C</option>
-              <option value="C#">C# / Db</option>
-              <option value="D">D</option>
-              <option value="Eb">Eb</option>
-              <option value="E">E</option>
-              <option value="F">F</option>
-              <option value="F#">F# / Gb</option>
-              <option value="G">G</option>
-              <option value="Ab">Ab</option>
-              <option value="A">A</option>
-              <option value="Bb">Bb</option>
-              <option value="B">B</option>
-              <option value="Cm">Cm</option>
-              <option value="C#m">C#m</option>
-              <option value="Dm">Dm</option>
-              <option value="Ebm">Ebm</option>
-              <option value="Em">Em</option>
-              <option value="Fm">Fm</option>
-              <option value="F#m">F#m</option>
-              <option value="Gm">Gm</option>
-              <option value="G#m">G#m</option>
-              <option value="Am">Am</option>
-              <option value="Bbm">Bbm</option>
-              <option value="Bm">Bm</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-bpm">BPM</label>
-            <input class="form-input" type="number" id="input-bpm" placeholder="-" min="20" max="300">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-timesig">Time Sig</label>
-            <select class="form-select" id="input-timesig">
-              <option value="">-</option>
-              <option value="4/4">4/4</option>
-              <option value="3/4">3/4</option>
-              <option value="6/8">6/8</option>
-              <option value="2/4">2/4</option>
-              <option value="12/8">12/8</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="input-capo">Capo</label>
-            <select class="form-select" id="input-capo">
-              <option value="">None</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-original-key">Original Key</label>
-            <select class="form-select" id="input-original-key">
-              <option value="">-</option>
-              <option value="C">C</option>
-              <option value="C#">C# / Db</option>
-              <option value="D">D</option>
-              <option value="Eb">Eb</option>
-              <option value="E">E</option>
-              <option value="F">F</option>
-              <option value="F#">F# / Gb</option>
-              <option value="G">G</option>
-              <option value="Ab">Ab</option>
-              <option value="A">A</option>
-              <option value="Bb">Bb</option>
-              <option value="B">B</option>
-              <option value="Cm">Cm</option>
-              <option value="C#m">C#m</option>
-              <option value="Dm">Dm</option>
-              <option value="Ebm">Ebm</option>
-              <option value="Em">Em</option>
-              <option value="Fm">Fm</option>
-              <option value="F#m">F#m</option>
-              <option value="Gm">Gm</option>
-              <option value="G#m">G#m</option>
-              <option value="Am">Am</option>
-              <option value="Bbm">Bbm</option>
-              <option value="Bm">Bm</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Transpose Controls -->
-      <div class="sidebar-section">
-        <div class="sidebar-header sidebar-header-compact">Transpose</div>
-        <div class="transpose-bar">
-          <button class="transpose-btn" id="btn-transpose-down" title="Transpose down one semitone" aria-label="Transpose down one semitone">−</button>
-          <span class="transpose-key" id="transpose-display">-</span>
-          <button class="transpose-btn" id="btn-transpose-up" title="Transpose up one semitone" aria-label="Transpose up one semitone">+</button>
-        </div>
-      </div>
-
-      <!-- Arrangement Notes -->
-      <div class="sidebar-section">
-        <div class="sidebar-header sidebar-header-compact">Notes</div>
-        <textarea id="input-notes" class="form-input input-notes" placeholder="Band cues, setlist notes..." rows="3" aria-label="Arrangement notes"></textarea>
-      </div>
-
-      <!-- Recent Charts -->
-      <div class="sidebar-section sidebar-section-flex">
-        <div class="sidebar-header sidebar-header-compact recent-charts-header">
-          <h3 class="sidebar-subheading" id="recent-charts-title">Recent</h3>
-          <button class="btn btn-sm btn-ghost" id="btn-open-library" type="button">Open Library</button>
-        </div>
-        <ul id="recent-charts-list" class="recent-charts-list" role="list" aria-labelledby="recent-charts-title"></ul>
-        <p id="recent-charts-empty" class="recent-charts-empty" hidden>Charts you save to the Library appear here.</p>
-      </div>
-    </aside>
-
     <!-- ===== EDITOR PANEL ===== -->
-    <section class="editor-panel" id="editor-panel">
+    <section class="editor-panel" id="editor-panel" aria-labelledby="editor-heading">
+      <h2 class="visually-hidden" id="editor-heading">Edit chart</h2>
       <div class="editor-toolbar">
-        <div class="editor-toolbar-left">
-          <div class="editor-tabs" role="tablist" aria-label="Editor tools">
-            <button class="editor-tab active" id="sections-tab" data-editor-tab="sections" type="button" role="tab" aria-controls="sections-tab-panel" aria-selected="true" tabindex="0">Sections</button>
-            <button class="editor-tab" id="versions-tab" data-editor-tab="versions" type="button" role="tab" aria-controls="versions-tab-panel" aria-selected="false" tabindex="-1">Versions</button>
-            <button class="editor-tab" id="info-tab" data-editor-tab="info" type="button" role="tab" aria-controls="info-tab-panel" aria-selected="false" tabindex="-1">Info</button>
-            <button class="editor-tab" id="collected-tab" data-editor-tab="collected" type="button" role="tab" aria-controls="collected-tab-panel" aria-selected="false" tabindex="-1">Collected</button>
-          </div>
-        </div>
-        <div class="editor-toolbar-left editor-tab-actions" data-editor-tab-actions="sections">
-          <select class="form-select template-select" id="template-select" title="Section template" aria-label="Section template"></select>
-          <button class="btn btn-sm" id="btn-add-section-top" title="Add section at top">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section
-          </button>
-          <button class="btn btn-sm" id="btn-import-text" title="Import from pasted text">
-            Import text
-          </button>
-        </div>
-        <div class="editor-toolbar-left editor-tab-actions hidden" data-editor-tab-actions="versions">
-          <button class="btn btn-sm btn-primary" id="btn-save-version" title="Save a manual version snapshot">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Save version
-          </button>
-        </div>
+        <details class="menu add-section-menu" id="add-section-menu" data-menu>
+          <summary class="btn btn-sm btn-primary" id="btn-add-section" title="Add a section"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-chevron-down"/></svg></summary>
+          <div class="menu-panel add-section-panel" data-add-section-panel></div>
+        </details>
+        <button class="btn btn-sm btn-ghost" id="btn-find" type="button" title="Find and replace (Cmd+F)"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-search"/></svg> Find</button>
       </div>
 
-      <div class="editor-tab-panel active" id="sections-tab-panel" data-editor-tab-panel="sections" role="tabpanel" aria-labelledby="sections-tab">
-        <!-- Search & Replace bar (inline, VS Code style) -->
-        <div class="search-replace-bar" id="search-replace-bar" hidden>
-          <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…" aria-label="Find text">
-          <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…" aria-label="Replacement text">
+      <!-- Find & replace bar -->
+      <div class="search-replace-bar" id="search-replace-bar" hidden>
+        <div class="search-row">
+          <input type="text" class="form-input search-bar-input" id="search-find-input" placeholder="Find…" aria-label="Find text" aria-describedby="search-count">
+          <span class="search-count" id="search-count" role="status" aria-live="polite"></span>
+          <button class="btn btn-sm btn-ghost btn-icon" id="search-prev-btn" type="button" aria-label="Previous match" title="Previous match (Shift+Enter)"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-arrow-up"/></svg></button>
+          <button class="btn btn-sm btn-ghost btn-icon" id="search-next-btn" type="button" aria-label="Next match" title="Next match (Enter)"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-arrow-down"/></svg></button>
+          <select class="form-select search-scope" id="search-scope" aria-label="Search in">
+            <option value="all">All text</option>
+            <option value="chords">Chords only</option>
+            <option value="lyrics">Lyrics only</option>
+          </select>
           <label class="search-option" for="search-case-sensitive" title="Match case"><input type="checkbox" id="search-case-sensitive"> <span aria-hidden="true">Aa</span><span class="visually-hidden">Match case</span></label>
           <label class="search-option" for="search-regex" title="Use regular expressions"><input type="checkbox" id="search-regex"> <span aria-hidden="true">.*</span><span class="visually-hidden">Use regular expressions</span></label>
-          <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace all</button>
-          <button class="btn btn-sm btn-ghost" id="search-close-btn" aria-label="Close find and replace"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg></button>
+          <button class="btn btn-sm btn-ghost" id="search-replace-toggle" type="button" aria-expanded="false" aria-controls="search-replace-row">Replace</button>
+          <button class="btn btn-sm btn-ghost btn-icon" id="search-close-btn" aria-label="Close find and replace"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg></button>
         </div>
+        <div class="search-row" id="search-replace-row" hidden>
+          <input type="text" class="form-input search-bar-input" id="search-replace-input" placeholder="Replace with…" aria-label="Replacement text">
+          <button class="btn btn-sm btn-primary" id="search-replace-btn">Replace all</button>
+        </div>
+      </div>
 
-        <div class="editor-sections" id="editor-sections">
-          <!-- Section cards rendered here by JS -->
-          <div class="empty-state" id="empty-state">
-            <div class="empty-state-title">Start with a line of music</div>
-            <div class="empty-state-desc">
-              Add chords above your lyrics, then build your song one section at a time.
+      <div class="editor-sections" id="editor-sections">
+        <!-- Song details: laid out like the printed chart header -->
+        <section class="chart-header" id="chart-header" aria-labelledby="song-details-heading">
+          <h2 class="visually-hidden" id="song-details-heading">Song details</h2>
+          <label class="visually-hidden" for="input-title">Title</label>
+          <input class="chart-header-title" type="text" id="input-title" placeholder="Song title" autocomplete="off">
+          <label class="visually-hidden" for="input-artist">Artist</label>
+          <input class="chart-header-artist" type="text" id="input-artist" placeholder="Artist" autocomplete="off">
+
+          <div class="chart-header-fields">
+            <div class="header-field header-field-key">
+              <label class="form-label" for="input-key">Key</label>
+              <div class="key-control">
+                <select class="form-select" id="input-key">
+                  <option value="">-</option>
+                  <option value="C">C</option>
+                  <option value="C#">C# / Db</option>
+                  <option value="D">D</option>
+                  <option value="Eb">Eb</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="F#">F# / Gb</option>
+                  <option value="G">G</option>
+                  <option value="Ab">Ab</option>
+                  <option value="A">A</option>
+                  <option value="Bb">Bb</option>
+                  <option value="B">B</option>
+                  <option value="Cm">Cm</option>
+                  <option value="C#m">C#m</option>
+                  <option value="Dm">Dm</option>
+                  <option value="Ebm">Ebm</option>
+                  <option value="Em">Em</option>
+                  <option value="Fm">Fm</option>
+                  <option value="F#m">F#m</option>
+                  <option value="Gm">Gm</option>
+                  <option value="G#m">G#m</option>
+                  <option value="Am">Am</option>
+                  <option value="Bbm">Bbm</option>
+                  <option value="Bm">Bm</option>
+                </select>
+                <button class="transpose-btn" id="btn-transpose-down" type="button" title="Transpose down one semitone" aria-label="Transpose down one semitone">−</button>
+                <button class="transpose-btn" id="btn-transpose-up" type="button" title="Transpose up one semitone" aria-label="Transpose up one semitone">+</button>
+              </div>
             </div>
-            <div class="empty-state-actions">
-              <button class="btn btn-primary" id="btn-start-chart">Add chords &amp; lyrics</button>
-              <button class="btn btn-ghost" id="btn-start-import">Import existing text</button>
+            <div class="header-field header-field-narrow">
+              <label class="form-label" for="input-bpm">BPM</label>
+              <input class="form-input" type="number" id="input-bpm" placeholder="-" min="20" max="300">
+            </div>
+            <div class="header-field header-field-narrow">
+              <label class="form-label" for="input-timesig">Time</label>
+              <select class="form-select" id="input-timesig">
+                <option value="">-</option>
+                <option value="4/4">4/4</option>
+                <option value="3/4">3/4</option>
+                <option value="6/8">6/8</option>
+                <option value="2/4">2/4</option>
+                <option value="12/8">12/8</option>
+              </select>
+            </div>
+            <div class="header-field header-field-narrow">
+              <label class="form-label" for="input-capo">Capo</label>
+              <select class="form-select" id="input-capo">
+                <option value="">None</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+              </select>
             </div>
           </div>
+          <p class="transpose-status" id="transpose-status">
+            <span id="transpose-display" class="transpose-key" hidden></span>
+            <button class="link-button" id="btn-transpose-reset" type="button" hidden>Back to original key</button>
+          </p>
+
+          <details class="chart-header-more" id="chart-details-more">
+            <summary class="chart-header-more-toggle"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-chevron-right"/></svg> <span>Notes, original key &amp; private info</span><span class="chart-header-more-hint" id="chart-details-hint"></span></summary>
+            <div class="chart-header-more-grid">
+              <div class="chart-header-group">
+                <h3 class="chart-header-group-title">Printed on the chart</h3>
+                <div class="form-group">
+                  <label class="form-label" for="input-original-key">Original key</label>
+                  <select class="form-select" id="input-original-key">
+                    <option value="">-</option>
+                    <option value="C">C</option>
+                    <option value="C#">C# / Db</option>
+                    <option value="D">D</option>
+                    <option value="Eb">Eb</option>
+                    <option value="E">E</option>
+                    <option value="F">F</option>
+                    <option value="F#">F# / Gb</option>
+                    <option value="G">G</option>
+                    <option value="Ab">Ab</option>
+                    <option value="A">A</option>
+                    <option value="Bb">Bb</option>
+                    <option value="B">B</option>
+                    <option value="Cm">Cm</option>
+                    <option value="C#m">C#m</option>
+                    <option value="Dm">Dm</option>
+                    <option value="Ebm">Ebm</option>
+                    <option value="Em">Em</option>
+                    <option value="Fm">Fm</option>
+                    <option value="F#m">F#m</option>
+                    <option value="Gm">Gm</option>
+                    <option value="G#m">G#m</option>
+                    <option value="Am">Am</option>
+                    <option value="Bbm">Bbm</option>
+                    <option value="Bm">Bm</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="input-notes">Arrangement notes</label>
+                  <textarea id="input-notes" class="form-input input-notes" placeholder="Band cues, setlist notes…" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="chart-header-group">
+                <h3 class="chart-header-group-title">Private — never printed or exported to PDF</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="input-group">Group</label>
+                    <select class="form-select" id="input-group"></select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="input-status">Status</label>
+                    <input class="form-input" type="text" id="input-status" placeholder="Draft, rehearsal, final…">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="input-source">Source</label>
+                  <input class="form-input" type="text" id="input-source" placeholder="Reference chart, session, recording, or link…">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="input-info-notes">Private notes</label>
+                  <textarea id="input-info-notes" class="form-input input-notes" placeholder="Revision notes, source details, or handoff context…" rows="3"></textarea>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-title">Start with a line of music</div>
+          <div class="empty-state-desc">
+            Add chords above your lyrics, then build your song one section at a time.
+          </div>
+          <div class="empty-state-actions">
+            <button class="btn btn-primary" id="btn-start-chart">Add chords &amp; lyrics</button>
+            <button class="btn btn-ghost" id="btn-start-import">Import existing text</button>
+          </div>
+        </div>
+
+        <div class="section-list" id="section-list">
+          <!-- Section cards rendered here by JS -->
         </div>
 
         <div class="add-section-area" id="add-section-area" hidden>
-          <button class="add-section-btn" id="btn-add-section-bottom">
-            <svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section at end
-          </button>
+          <details class="menu add-section-menu add-section-menu-inline" id="add-section-menu-end" data-menu data-insert="end">
+            <summary class="add-section-btn"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Add section</summary>
+            <div class="menu-panel add-section-panel" data-add-section-panel></div>
+          </details>
         </div>
-      </div>
-
-      <div class="editor-tab-panel" id="versions-tab-panel" data-editor-tab-panel="versions" role="tabpanel" aria-labelledby="versions-tab" hidden>
-        <div class="tool-panel-header">
-          <div>
-            <h2 class="tool-panel-title">Versions</h2>
-            <div class="tool-panel-subtitle">Manual snapshots for trying arrangement changes without losing earlier charts.</div>
-          </div>
-        </div>
-        <div class="versions-list" id="versions-list"></div>
-      </div>
-
-      <div class="editor-tab-panel" id="info-tab-panel" data-editor-tab-panel="info" role="tabpanel" aria-labelledby="info-tab" hidden>
-        <div class="tool-panel-header">
-          <div>
-            <h2 class="tool-panel-title">Chart info</h2>
-            <div class="tool-panel-subtitle">Private workflow details. These fields do not print or export to PDF.</div>
-          </div>
-        </div>
-        <div class="info-panel-grid">
-          <div class="form-group">
-            <label class="form-label" for="input-group">Group</label>
-            <select class="form-select" id="input-group"></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-status">Status</label>
-            <input class="form-input" type="text" id="input-status" placeholder="Draft, rehearsal, final...">
-          </div>
-          <div class="form-group info-panel-span">
-            <label class="form-label" for="input-source">Source</label>
-            <input class="form-input" type="text" id="input-source" placeholder="Reference chart, session, recording, or link...">
-          </div>
-          <div class="form-group info-panel-span">
-            <label class="form-label" for="input-info-notes">Info notes</label>
-            <textarea id="input-info-notes" class="form-input input-notes" placeholder="Private revision notes, source details, or handoff context..." rows="6"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="editor-tab-panel" id="collected-tab-panel" data-editor-tab-panel="collected" role="tabpanel" aria-labelledby="collected-tab" hidden>
-        <div class="tool-panel-header">
-          <div>
-            <h2 class="tool-panel-title">Collected sections</h2>
-            <div class="tool-panel-subtitle">Save reusable intros, endings, turnarounds, and section patterns from any chart.</div>
-          </div>
-        </div>
-        <div class="collected-list" id="collected-list"></div>
       </div>
     </section>
 
@@ -355,7 +325,7 @@
     <aside class="library-groups-panel" aria-labelledby="library-groups-heading">
       <div class="library-groups-header">
         <h2 class="library-groups-title" id="library-groups-heading">Groups</h2>
-        <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group" aria-label="New group">+</button>
+        <button class="btn btn-sm btn-ghost" id="btn-new-group" title="New group" aria-label="New group"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg></button>
       </div>
       <div class="library-group-list" id="library-group-list"></div>
     </aside>
@@ -366,7 +336,7 @@
           <p class="library-subtitle">Browse saved charts by setlist or folder.</p>
         </div>
         <div class="library-controls">
-          <input type="text" id="full-library-search" class="form-input library-full-search" placeholder="Search charts..." aria-label="Search full library">
+          <input type="text" id="full-library-search" class="form-input library-full-search" placeholder="Search charts…" aria-label="Search full library">
           <select id="full-library-sort" class="form-select library-full-sort" aria-label="Sort full library">
             <option value="date">Newest</option>
             <option value="alpha">A-Z</option>
@@ -384,9 +354,9 @@
     <div class="status-bar-left">
       <div class="status-indicator">
         <div class="status-dot"></div>
-      <span id="status-autosave" role="status" aria-live="polite">Saving draft…</span>
+        <span id="status-library" role="status" aria-live="polite">Not in Library yet</span>
       </div>
-      <span id="status-library" role="status" aria-live="polite">Not saved to Library</span>
+      <span id="status-autosave" role="status" aria-live="polite" hidden></span>
     </div>
     <div class="status-bar-right">
       <span id="status-sections">0 sections</span>
@@ -401,13 +371,19 @@
   <div class="modal-content modal-content-sm">
     <h2 class="modal-title" id="settings-modal-title">Settings</h2>
     <div class="settings-panel">
-      <label class="form-label" for="settings-save-folder">Saved songs folder</label>
-      <div class="settings-folder-row">
-        <input id="settings-save-folder" class="form-input settings-folder-input" type="text" readonly placeholder="Local library only">
-        <button class="btn btn-sm" id="btn-choose-save-folder">Choose</button>
+      <div class="settings-row">
+        <span class="form-label settings-row-label" id="settings-appearance-label">Appearance</span>
+        <button class="btn btn-sm" id="btn-dark-mode" type="button" aria-label="Light mode" aria-pressed="false" aria-describedby="settings-appearance-label"><span class="theme-toggle-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-moon"/></svg></span> Light mode</button>
       </div>
-      <div class="settings-status" id="settings-save-folder-status"></div>
-      <button class="btn btn-sm btn-ghost" id="btn-clear-save-folder">Clear folder</button>
+      <div class="settings-folder-section" id="settings-folder-section">
+        <label class="form-label" for="settings-save-folder">Backup folder</label>
+        <div class="settings-folder-row">
+          <input id="settings-save-folder" class="form-input settings-folder-input" type="text" readonly placeholder="Local library only">
+          <button class="btn btn-sm" id="btn-choose-save-folder">Choose</button>
+        </div>
+        <div class="settings-status" id="settings-save-folder-status"></div>
+        <button class="btn btn-sm btn-ghost" id="btn-clear-save-folder">Clear folder</button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" id="btn-settings-close">Done</button>
@@ -419,20 +395,39 @@
 <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
 <!-- Hidden file input for JSON import -->
-<input type="file" id="file-input-json" accept=".json" class="hidden">
+<input type="file" id="file-input-json" accept=".json,application/json" class="hidden">
 
-<!-- Import Text Modal -->
+<!-- Import Modal -->
 <div id="import-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="import-modal-title" aria-describedby="import-modal-description">
   <div class="modal-content">
-    <h2 class="modal-title" id="import-modal-title">Import from text</h2>
+    <h2 class="modal-title" id="import-modal-title">Import</h2>
     <p class="modal-description" id="import-modal-description">
-      Paste raw chart text. Lines starting with chord names (A, Bm, C#m7, etc.) are detected as chords.
-      Lines in <code>[brackets]</code> become section labels. Everything else is lyrics.
+      Paste chart text to add its sections to this chart. Lines of chord names (A, Bm, C#m7…) become chords,
+      <code>[Chorus]</code>-style labels start sections, and everything else becomes lyrics.
+      You can also drop a .txt or .json file anywhere on the window.
     </p>
     <textarea id="import-textarea" class="modal-textarea" placeholder="Paste chart text here…" aria-label="Chart text to import"></textarea>
+    <div class="modal-footer modal-footer-split">
+      <button class="btn btn-ghost" id="btn-import-json-file" type="button" title="Replace this chart with a Chart Creator JSON file"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-upload"/></svg> Open JSON file…</button>
+      <div class="modal-footer-actions">
+        <button class="btn" id="btn-import-cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-import-confirm">Add sections</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Version History Modal -->
+<div id="versions-modal" class="modal-overlay" hidden data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="versions-modal-title" aria-describedby="versions-modal-description">
+  <div class="modal-content modal-content-wide">
+    <div class="modal-title-row">
+      <h2 class="modal-title" id="versions-modal-title">Version history</h2>
+      <button class="btn btn-sm btn-primary" id="btn-save-version-inline" type="button"><svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg> Save version</button>
+    </div>
+    <p class="modal-description" id="versions-modal-description">Snapshots let you try arrangement changes without losing earlier charts.</p>
+    <div class="versions-list" id="versions-list"></div>
     <div class="modal-footer">
-      <button class="btn" id="btn-import-cancel">Cancel</button>
-      <button class="btn btn-primary" id="btn-import-confirm">Import</button>
+      <button class="btn" id="btn-versions-close" type="button">Close</button>
     </div>
   </div>
 </div>
@@ -443,7 +438,7 @@
     <h2 class="modal-title" id="version-modal-title">Save version</h2>
     <div class="form-group">
       <label class="form-label" for="version-name-input">Name</label>
-      <input id="version-name-input" class="form-input" type="text" placeholder="Version name...">
+      <input id="version-name-input" class="form-input" type="text" placeholder="Version name…">
     </div>
     <div class="form-group">
       <label class="form-label" for="version-notes-input">Notes</label>
@@ -462,7 +457,7 @@
     <h2 class="modal-title" id="group-modal-title">New group</h2>
     <div class="form-group">
       <label class="form-label" for="group-name-input">Name</label>
-      <input id="group-name-input" class="form-input" type="text" placeholder="Setlist or folder name...">
+      <input id="group-name-input" class="form-input" type="text" placeholder="Setlist or folder name…">
     </div>
     <div class="modal-footer">
       <button class="btn" type="button" id="btn-group-cancel">Cancel</button>
@@ -472,12 +467,13 @@
 </div>
 
 <!-- Collect Section Modal -->
-<div id="collect-section-modal" class="modal-overlay" hidden data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="collect-section-modal-title">
+<div id="collect-section-modal" class="modal-overlay" hidden data-backdrop-dismiss="true" role="dialog" aria-modal="true" aria-labelledby="collect-section-modal-title" aria-describedby="collect-section-modal-description">
   <form class="modal-content modal-content-sm" id="collect-section-form">
-    <h2 class="modal-title" id="collect-section-modal-title">Collect section</h2>
+    <h2 class="modal-title" id="collect-section-modal-title">Save to My sections</h2>
+    <p class="modal-description" id="collect-section-modal-description">Saved sections appear under My sections in the Add section menu, ready to reuse in any chart.</p>
     <div class="form-group">
       <label class="form-label" for="collect-section-name-input">Name</label>
-      <input id="collect-section-name-input" class="form-input" type="text" placeholder="Reusable section name...">
+      <input id="collect-section-name-input" class="form-input" type="text" placeholder="Reusable section name…">
     </div>
     <div class="modal-footer">
       <button class="btn" type="button" id="btn-collect-cancel">Cancel</button>
@@ -497,6 +493,7 @@
       <tr><th><code>Cmd/Ctrl + Shift + Z</code></th><td>Redo</td></tr>
       <tr><th><code>Cmd/Ctrl + F</code></th><td>Find</td></tr>
       <tr><th><code>Cmd/Ctrl + H</code></th><td>Find and replace</td></tr>
+      <tr><th><code>Enter / Shift + Enter</code></th><td>Next / previous match (in Find)</td></tr>
       <tr><th><code>Enter</code></th><td>Add a line below (in a line field)</td></tr>
       <tr><th><code>Alt + Up/Down</code></th><td>Move a focused section or line</td></tr>
       <tr><th><code>Esc</code></th><td>Close the open dialog, menu, or find bar</td></tr>

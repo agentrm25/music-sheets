@@ -12,17 +12,40 @@
     const btnR = document.getElementById('btn-redo');
     if (btnU) btnU.disabled = !canUndo;
     if (btnR) btnR.disabled = !canRedo;
+    if (app.expireUndoToasts) app.expireUndoToasts();
   });
 
-  app.pushUndo = () => undoManager.push(app.state);
-  app.snapshotTextEdit = () => undoManager.snapshotTextEdit(app.state);
-  app.commitTextEdit = () => undoManager.commitTextEdit(app.state);
-  app.refreshUndoState = () => undoManager.refresh(app.state);
-  
+  // Collapsing a section or resizing its editor is how you look at the chart,
+  // not a change to it, so chart history ignores those fields.
+  function historyState(state) {
+    if (!state || !Array.isArray(state.sections)) return state;
+    return {
+      ...state,
+      sections: state.sections.map(section => ({ ...section, collapsed: false, editorHeight: '' }))
+    };
+  }
+
+  // Restored snapshots keep the sections' current view state.
+  function withCurrentView(snapshot) {
+    const current = new Map((app.state.sections || []).map(section => [section.id, section]));
+    snapshot.sections.forEach(section => {
+      const live = current.get(section.id);
+      section.collapsed = live ? !!live.collapsed : false;
+      section.editorHeight = live ? live.editorHeight || '' : '';
+    });
+    return snapshot;
+  }
+
+  app.pushUndo = () => undoManager.push(historyState(app.state));
+  app.snapshotTextEdit = () => undoManager.snapshotTextEdit(historyState(app.state));
+  app.commitTextEdit = () => undoManager.commitTextEdit(historyState(app.state));
+  app.refreshUndoState = () => undoManager.refresh(historyState(app.state));
+  app.historyToken = () => `${undoManager.index}:${undoManager.stack.length}`;
+
   app.undo = () => {
-    const snap = undoManager.undo(app.state);
+    const snap = undoManager.undo(historyState(app.state));
     if (snap) {
-      app.state = snap;
+      app.state = withCurrentView(snap);
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();
@@ -34,7 +57,7 @@
   app.redo = () => {
     const snap = undoManager.redo();
     if (snap) {
-      app.state = snap;
+      app.state = withCurrentView(snap);
       if (app.syncFormFromState) app.syncFormFromState();
       if (app.renderEditor) app.renderEditor();
       if (app.renderPreview) app.renderPreview();
@@ -48,7 +71,6 @@
     if (app.bindWorkflowEvents) app.bindWorkflowEvents();
     if (app.bindWorkspaceEvents) app.bindWorkspaceEvents();
     if (app.bindModalBackdrops) app.bindModalBackdrops();
-    populateTemplates();
     
     // Load from storage or start fresh
     if (!app.autoLoad()) {
@@ -60,11 +82,8 @@
     if (app.syncFormFromState) app.syncFormFromState();
     if (app.renderEditor) app.renderEditor();
     if (app.renderPreview) app.renderPreview();
-    if (app.renderSavedCharts) app.renderSavedCharts();
     if (app.renderInfoPanel) app.renderInfoPanel();
     if (app.renderCollectedSections) app.renderCollectedSections();
-    if (app.renderVersions) app.renderVersions();
-    if (app.showEditorTab) app.showEditorTab('sections');
     if (app.showWorkspace) app.showWorkspace('editor');
     
     undoManager.clear();
@@ -87,9 +106,8 @@
         app.commitChange();
         undoManager.clear();
         if (app.showWorkspace) app.showWorkspace('editor');
-        if (app.showEditorTab) app.showEditorTab('sections');
         if (app.showWorkspacePanel) app.showWorkspacePanel('editor');
-        document.getElementById('btn-start-chart')?.focus();
+        document.getElementById('input-title')?.focus();
       };
       const hasWork = app.chartHasContent(app.state);
       const isDirty = app.isCurrentChartDirty ? app.isCurrentChartDirty() : true;
@@ -106,7 +124,9 @@
     document.getElementById('btn-export-pdf-menu')?.addEventListener('click', () => app.exportPDF());
     document.getElementById('btn-settings').addEventListener('click', () => app.openSettings());
     
-    document.getElementById('btn-load').addEventListener('click', () => {
+    document.getElementById('btn-load').addEventListener('click', () => app.openImportModal());
+    document.getElementById('btn-import-json-file')?.addEventListener('click', () => {
+      app.closeModal('import-modal');
       document.getElementById('file-input-json').click();
     });
     document.getElementById('file-input-json').addEventListener('change', e => {
@@ -147,6 +167,8 @@
       el.addEventListener('blur', () => app.commitTextEdit());
       el.addEventListener('input', () => {
         app.state[prop] = el.value;
+        if (prop === 'key' || prop === 'originalKey') app.updateTransposeStatus();
+        if (prop === 'originalKey' || prop === 'arrangementNotes') app.updateChartDetailsHint();
         app.schedulePreview();
         app.autoSave();
       });
@@ -179,64 +201,68 @@
     // Transpose
     document.getElementById('btn-transpose-up').addEventListener('click', () => transposeAll(1));
     document.getElementById('btn-transpose-down').addEventListener('click', () => transposeAll(-1));
+    document.getElementById('btn-transpose-reset')?.addEventListener('click', () => {
+      const offset = app.keyOffset(app.state.originalKey, app.state.key);
+      if (offset) transposeAll(-offset);
+    });
 
-    // Search and Replace
-    const srBtn = document.getElementById('search-replace-btn');
-    if (srBtn) srBtn.addEventListener('click', () => app.searchAndReplace());
-    const srClose = document.getElementById('search-close-btn');
-    if (srClose) srClose.addEventListener('click', () => app.closeSearchReplace ? app.closeSearchReplace() : null);
-    const srFind = document.getElementById('search-find-input');
-    // Skip the debounced highlight if the bar closed while it was pending.
-    if (srFind) srFind.addEventListener('input', app.debounce(() => {
-      if (app.isSearchReplaceOpen?.()) app.highlightSearchPreview?.();
+    // Find and replace
+    const byId = id => document.getElementById(id);
+    byId('btn-find')?.addEventListener('click', () => app.openSearchReplace('find'));
+    byId('search-replace-btn')?.addEventListener('click', () => app.searchAndReplace());
+    byId('search-close-btn')?.addEventListener('click', () => app.closeSearchReplace());
+    const srFind = byId('search-find-input');
+    // Skip the debounced update if the bar closed while it was pending.
+    srFind?.addEventListener('input', app.debounce(() => {
+      if (app.isSearchReplaceOpen?.()) app.onSearchInput();
     }, app.SEARCH_DEBOUNCE_MS));
-    const srRegex = document.getElementById('search-regex');
-    if (srRegex) srRegex.addEventListener('change', () => app.highlightSearchPreview ? app.highlightSearchPreview() : null);
-    const srCase = document.getElementById('search-case-sensitive');
-    if (srCase) srCase.addEventListener('change', () => app.highlightSearchPreview ? app.highlightSearchPreview() : null);
+    srFind?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      app.goToSearchMatch(event.shiftKey ? -1 : 1);
+    });
+    byId('search-replace-input')?.addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      app.searchAndReplace();
+    });
+    byId('search-next-btn')?.addEventListener('click', () => app.goToSearchMatch(1));
+    byId('search-prev-btn')?.addEventListener('click', () => app.goToSearchMatch(-1));
+    byId('search-scope')?.addEventListener('change', () => app.onSearchScopeChange());
+    ['search-regex', 'search-case-sensitive'].forEach(id => byId(id)?.addEventListener('change', () => {
+      app.updateSearchResults();
+      app.highlightSearchPreview();
+    }));
+    byId('search-replace-toggle')?.addEventListener('click', () => {
+      const showing = byId('search-replace-row')?.hidden === false;
+      app.setReplaceVisible(!showing);
+      if (!showing) byId('search-replace-input')?.focus();
+    });
 
-    // Editor Sections Toolbar
-    document.getElementById('btn-add-section-top').addEventListener('click', () => {
-      app.pushUndo();
-      const sel = document.getElementById('template-select');
-      const tmpl = app.SECTION_TEMPLATES[sel.selectedIndex];
-      const sec = app.createSection(sel.selectedIndex === 0 || tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
-      if (sec.type === 'custom') {
-        const customType = Object.keys(app.SECTION_META).find(k => tmpl.name.toLowerCase().includes(k));
-        if (customType) sec.type = customType;
-        else sec.customLabel = tmpl.name.split(' ')[0];
+    // Import: pasted text adds sections; a JSON file replaces the chart.
+    app.openImportModal = function(text = '') {
+      byId('import-textarea').value = text;
+      app.openModal('import-modal', { initialFocus: byId('import-textarea') });
+    };
+    byId('btn-start-import')?.addEventListener('click', () => app.openImportModal());
+
+    // Dropping a file anywhere imports it the same way.
+    document.addEventListener('dragover', event => {
+      if (Array.from(event.dataTransfer?.types || []).includes('Files')) event.preventDefault();
+    });
+    document.addEventListener('drop', event => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      event.preventDefault();
+      if (/\.json$/i.test(file.name) || file.type === 'application/json') {
+        app.requestImportJSON(file);
+      } else if (/^text\//.test(file.type) || /\.(txt|text|md|chordpro|cho|crd)$/i.test(file.name)) {
+        file.text().then(text => app.openImportModal(text));
+      } else {
+        app.showToast('Drop a .txt or .json chart file to import it', 'error');
       }
-      sec.lines = tmpl.lines();
-      app.state.sections.unshift(sec);
-      app.commitChange();
-      const editorSections = document.getElementById('editor-sections');
-      editorSections.scrollTo(0, 0);
     });
 
-    document.getElementById('btn-add-section-bottom').addEventListener('click', () => {
-      app.pushUndo();
-      const sel = document.getElementById('template-select');
-      const tmpl = app.SECTION_TEMPLATES[sel.selectedIndex];
-      const sec = app.createSection(sel.selectedIndex === 0 || tmpl.name.toLowerCase().includes('verse') ? 'verse' : 'custom', app.state.sections);
-      if (sec.type === 'custom') {
-        const customType = Object.keys(app.SECTION_META).find(k => tmpl.name.toLowerCase().includes(k));
-        if (customType) sec.type = customType;
-        else sec.customLabel = tmpl.name.split(' ')[0];
-      }
-      sec.lines = tmpl.lines();
-      app.state.sections.push(sec);
-      app.commitChange();
-      setTimeout(() => {
-        const cards = document.querySelectorAll('.section-card');
-        if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: app.scrollBehavior() });
-      }, 50);
-    });
-
-    document.getElementById('btn-import-text').addEventListener('click', () => {
-      document.getElementById('import-textarea').value = '';
-      app.openModal('import-modal', { initialFocus: document.getElementById('import-textarea') });
-    });
-    
     document.getElementById('btn-import-cancel').addEventListener('click', () => {
       app.closeModal('import-modal');
     });
@@ -254,11 +280,8 @@
         app.state.sections = app.state.sections.concat(newSections);
         app.commitChange();
         app.closeModal('import-modal');
-        app.showToast(`Imported ${app.pluralize(newSections.length, 'section')}`, 'success');
-        setTimeout(() => {
-          const cards = document.querySelectorAll('.section-card');
-          if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: app.scrollBehavior() });
-        }, 50);
+        app.showToast(`Added ${app.pluralize(newSections.length, 'section')}`, 'success', { undo: true });
+        if (app.revealSection) app.revealSection(newSections[0].id, { focus: false });
       }
     });
 
@@ -343,19 +366,6 @@
         }
       }
     });
-
-    document.getElementById('btn-open-library')?.addEventListener('click', () => app.showWorkspace('library'));
-  }
-
-  function populateTemplates() {
-    const sel = document.getElementById('template-select');
-    if (!sel) return;
-    app.SECTION_TEMPLATES.forEach((tmpl, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = i === 0 ? 'Blank verse' : tmpl.name;
-      sel.appendChild(opt);
-    });
   }
 
   function transposeAll(semitones) {
@@ -365,10 +375,9 @@
     let newKey = app.state.key;
     let useFlats = false;
 
-    if (app.state.key) {
-      if (!app.state.originalKey) app.state.originalKey = app.state.key;
-      useFlats = app.determineUseFlats(app.state.key);
-      newKey = app.transposeNote(app.state.key, semitones, useFlats);
+    if (app.parseKey(app.state.key)) {
+      if (!app.state.originalKey) app.state.originalKey = app.canonicalKey(app.state.key);
+      newKey = app.transposeKey(app.state.key, semitones);
       app.state.key = newKey;
       useFlats = app.determineUseFlats(newKey);
     } else {
@@ -398,25 +407,16 @@
       });
     });
 
-    const display = document.getElementById('transpose-display');
-    if (display) {
-      const current = parseInt(display.dataset.steps || '0');
-      const next = current + semitones;
-      display.dataset.steps = next;
-      display.textContent = (next > 0 ? '+' : '') + next;
-      setTimeout(() => {
-        display.textContent = '-';
-        display.dataset.steps = 0;
-      }, 1500);
-    }
-
     app.syncFormFromState();
     app.commitChange();
-    app.showToast('Transposed chart', 'info');
+    const direction = semitones > 0 ? 'up' : 'down';
+    app.showToast(app.state.key ? `Transposed ${direction} to ${app.state.key}` : `Transposed ${direction} one semitone`, 'info', { undo: true, replace: 'transpose' });
   }
 
+  app.transposeAll = transposeAll;
+
+  // View state only: no Undo step (see historyState).
   app.toggleSectionCollapse = function(id) {
-    app.pushUndo();
     const sec = app.state.sections.find(s => s.id === id);
     if (sec) {
       sec.collapsed = !sec.collapsed;

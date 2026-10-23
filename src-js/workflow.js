@@ -2,7 +2,6 @@
   'use strict';
 
   app.activeWorkspace = 'editor';
-  app.activeEditorTab = 'sections';
   app.librarySelectedGroupId = 'all';
 
   let pendingGroupId = null;
@@ -81,26 +80,6 @@
       });
     }
     preview.appendChild(sectionWrap);
-    return preview;
-  }
-
-  function createSectionPreview(section) {
-    const preview = document.createElement('div');
-    preview.className = 'collected-section-preview';
-
-    const title = document.createElement('div');
-    title.className = `mini-chart-section-label ${section.type || 'custom'}`;
-    title.textContent = app.getSectionDisplayTitle(section);
-    preview.appendChild(title);
-
-    (section.lines || []).slice(0, 4).forEach(line => {
-      const text = sectionLineText(line);
-      if (!text) return;
-      const row = document.createElement('div');
-      row.className = 'mini-chart-row';
-      row.textContent = text;
-      preview.appendChild(row);
-    });
     return preview;
   }
 
@@ -272,9 +251,51 @@
     return select;
   }
 
+  function createCardMenu(chart, groups) {
+    const menu = document.createElement('details');
+    menu.className = 'menu library-card-menu';
+    menu.setAttribute('data-menu', '');
+    menu.addEventListener('click', event => event.stopPropagation());
+
+    const summary = document.createElement('summary');
+    summary.className = 'btn btn-sm btn-ghost btn-icon';
+    summary.title = 'Chart options';
+    summary.setAttribute('aria-label', `Options for ${chart.name}`);
+    summary.appendChild(app.icon('more'));
+
+    const panel = document.createElement('div');
+    panel.className = 'menu-panel menu-panel-end';
+
+    const groupLabel = document.createElement('label');
+    groupLabel.className = 'menu-field';
+    const groupText = document.createElement('span');
+    groupText.className = 'menu-heading';
+    groupText.textContent = 'Group';
+    groupLabel.appendChild(groupText);
+    groupLabel.appendChild(createGroupSelect(chart, groups));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'menu-item menu-item-danger';
+    deleteBtn.textContent = 'Delete chart';
+    deleteBtn.setAttribute('aria-label', `Delete ${chart.name}`);
+    deleteBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      app.showConfirm(`This deletes "${chart.name}" from your Library. Export JSON first if you want a backup.`, () => app.deleteChartFromLibrary(chart.data.id), { title: 'Delete chart?', confirmLabel: 'Delete chart' });
+    });
+
+    panel.appendChild(groupLabel);
+    panel.appendChild(deleteBtn);
+    menu.appendChild(summary);
+    menu.appendChild(panel);
+    return menu;
+  }
+
   function createLibraryCard(chart, groups) {
     const card = document.createElement('li');
     card.className = 'library-card';
+    const isOpen = app.state && chart.data.id === app.state.id;
+    if (isOpen) card.classList.add('is-open');
     const openChart = () => app.requestLoadChartFromLibrary(chart.data.id);
     card.addEventListener('click', openChart);
 
@@ -286,9 +307,17 @@
     const titleRow = document.createElement('div');
     titleRow.className = 'library-card-title-row';
 
-    const title = document.createElement('div');
+    // The title is the card's keyboard and screen-reader way in; the whole
+    // card also opens on click.
+    const title = document.createElement('button');
+    title.type = 'button';
     title.className = 'library-card-title';
     title.textContent = chart.name;
+    title.setAttribute('aria-label', `Open ${chart.name}`);
+    title.addEventListener('click', event => {
+      event.stopPropagation();
+      openChart();
+    });
 
     const favBtn = document.createElement('button');
     favBtn.type = 'button';
@@ -304,12 +333,18 @@
       if (!entry) return;
       entry.isFavorite = !entry.isFavorite;
       app.saveCharts(charts);
-      app.renderSavedCharts();
       app.renderFullLibrary();
     });
 
     titleRow.appendChild(title);
+    if (isOpen) {
+      const badge = document.createElement('span');
+      badge.className = 'library-card-badge';
+      badge.textContent = 'Open now';
+      titleRow.appendChild(badge);
+    }
     titleRow.appendChild(favBtn);
+    titleRow.appendChild(createCardMenu(chart, groups));
     body.appendChild(titleRow);
 
     const meta = document.createElement('div');
@@ -318,37 +353,11 @@
       chart.data.artist,
       chart.key ? `Key ${chart.key}` : '',
       `${chart.sectionsCount} section${chart.sectionsCount === 1 ? '' : 's'}`,
+      chart.groupId ? app.getGroupName(chart.groupId) : '',
       formatDate(chart.savedAt)
     ].filter(Boolean).join(' · ');
     body.appendChild(meta);
 
-    const footer = document.createElement('div');
-    footer.className = 'library-card-footer';
-
-    const openBtn = document.createElement('button');
-    openBtn.type = 'button';
-    openBtn.className = 'btn btn-sm btn-primary';
-    openBtn.textContent = 'Open';
-    openBtn.setAttribute('aria-label', `Open ${chart.name}`);
-    openBtn.addEventListener('click', event => {
-      event.stopPropagation();
-      openChart();
-    });
-    footer.appendChild(openBtn);
-    footer.appendChild(createGroupSelect(chart, groups));
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'btn btn-sm btn-ghost';
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.setAttribute('aria-label', `Delete ${chart.name}`);
-    deleteBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      app.showConfirm(`This deletes "${chart.name}" from your Library. Export JSON first if you want a backup.`, () => app.deleteChartFromLibrary(chart.data.id), { title: 'Delete chart?', confirmLabel: 'Delete chart' });
-    });
-    footer.appendChild(deleteBtn);
-
-    body.appendChild(footer);
     card.appendChild(body);
     return card;
   }
@@ -375,22 +384,19 @@
         empty.appendChild(reset);
         grid.appendChild(wrapListItem(empty));
       } else {
-        const empty = createEmptyMessage('Your Library is empty', 'Use Save to Library to add your current draft. Draft autosave does not add charts here.');
+        const empty = createEmptyMessage('Your Library is empty', 'Use Save to Library to keep the chart you are working on here.');
         const actions = document.createElement('div');
         actions.className = 'empty-state-actions';
         const save = document.createElement('button');
         save.type = 'button';
         save.className = 'btn btn-primary';
-        save.textContent = 'Save current draft';
+        save.textContent = 'Save current chart';
         save.addEventListener('click', () => $('btn-save-library')?.click());
         const create = document.createElement('button');
         create.type = 'button';
         create.className = 'btn';
-        create.textContent = 'Create chart';
-        create.addEventListener('click', () => {
-          app.showWorkspace('editor');
-          $('btn-new')?.click();
-        });
+        create.textContent = 'New chart';
+        create.addEventListener('click', () => $('btn-new')?.click());
         actions.appendChild(save);
         actions.appendChild(create);
         empty.appendChild(actions);
@@ -411,7 +417,7 @@
     const chart = app.getSavedCharts().find(entry => entry.data.id === app.state.id);
     const versions = chart ? chart.versions || [] : [];
     if (!versions.length) {
-      list.appendChild(createEmptyMessage('No versions saved', 'Use Save Version before trying a major arrangement change.'));
+      list.appendChild(createEmptyMessage('No versions yet', 'Save a version before trying a major arrangement change.'));
       return;
     }
 
@@ -465,69 +471,140 @@
     if (status && document.activeElement !== status) status.value = app.state.status || '';
     if (source && document.activeElement !== source) source.value = app.state.source || '';
     if (notes && document.activeElement !== notes) notes.value = app.state.infoNotes || '';
+    if (app.updateChartDetailsHint) app.updateChartDetailsHint();
   };
 
-  app.renderCollectedSections = function() {
-    const list = $('collected-list');
-    if (!list) return;
-    list.innerHTML = '';
+  function menuHeading(text) {
+    const heading = document.createElement('div');
+    heading.className = 'menu-heading';
+    heading.textContent = text;
+    return heading;
+  }
 
-    const items = app.getCollectedSections();
-    if (!items.length) {
-      list.appendChild(createEmptyMessage('Nothing collected yet', 'Open a section’s Options menu and choose Collect to save it here for reuse.'));
-      return;
+  const TEMPLATE_HINTS = ['Chord and lyric rows', '4 chord + lyric rows', '8 chord + lyric rows', '4 chord + lyric rows', '4 chord rows', '8 chord rows'];
+
+  // Fill one Add section menu: built-in templates, the user's saved
+  // sections, and pasted text. The toolbar menu follows the section being
+  // worked on; the menu after the last section always adds at the end.
+  function buildAddSectionPanel(panel, menuPlacement) {
+    panel.innerHTML = '';
+    const placementFor = () => {
+      const top = panel.querySelector('.add-section-top-toggle');
+      return top && top.checked ? 'top' : menuPlacement;
+    };
+
+    if (menuPlacement === 'auto') {
+      const note = document.createElement('p');
+      note.className = 'menu-note add-section-note';
+      note.setAttribute('aria-live', 'polite');
+      note.textContent = app.describeSectionInsert ? app.describeSectionInsert('auto') : '';
+      panel.appendChild(note);
     }
 
+    panel.appendChild(menuHeading('Templates'));
+    app.SECTION_TEMPLATES.forEach((_, index) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'menu-item';
+      item.dataset.template = String(index);
+      const label = document.createElement('span');
+      label.textContent = app.getSectionTemplateLabel(index);
+      const hint = document.createElement('span');
+      hint.className = 'menu-item-hint';
+      hint.textContent = TEMPLATE_HINTS[index] || '';
+      item.appendChild(label);
+      item.appendChild(hint);
+      item.addEventListener('click', () => app.addSectionFromTemplate(index, placementFor()));
+      panel.appendChild(item);
+    });
+
+    panel.appendChild(menuHeading('My sections'));
+    const items = app.getCollectedSections();
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'menu-note';
+      empty.textContent = 'Save a section from its options menu to reuse it here.';
+      panel.appendChild(empty);
+    }
     items.forEach(item => {
-      const card = document.createElement('article');
-      card.className = 'collected-card';
-
-      const header = document.createElement('div');
-      header.className = 'collected-card-header';
-
-      const titleWrap = document.createElement('div');
-      const title = document.createElement('div');
-      title.className = 'version-card-title';
-      title.textContent = item.name;
-      const meta = document.createElement('div');
-      meta.className = 'library-card-meta';
-      meta.textContent = `${item.sourceChartTitle} · ${formatDate(item.savedAt)}`;
-      titleWrap.appendChild(title);
-      titleWrap.appendChild(meta);
-      header.appendChild(titleWrap);
-
-      const actions = document.createElement('div');
-      actions.className = 'collected-card-actions';
-
+      const row = document.createElement('div');
+      row.className = 'menu-row';
       const insertBtn = document.createElement('button');
       insertBtn.type = 'button';
-      insertBtn.className = 'btn btn-sm btn-primary';
-      insertBtn.textContent = 'Insert';
-      insertBtn.setAttribute('aria-label', `Insert ${item.name}`);
-      insertBtn.addEventListener('click', () => app.insertCollectedSection(item.id));
+      insertBtn.className = 'menu-item';
+      insertBtn.setAttribute('aria-label', `Add ${item.name}`);
+      const label = document.createElement('span');
+      label.textContent = item.name;
+      const hint = document.createElement('span');
+      hint.className = 'menu-item-hint';
+      hint.textContent = `From ${item.sourceChartTitle}`;
+      insertBtn.appendChild(label);
+      insertBtn.appendChild(hint);
+      insertBtn.addEventListener('click', () => app.insertCollectedSection(item.id, placementFor()));
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
-      deleteBtn.className = 'btn btn-sm btn-ghost';
-      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'menu-item-delete';
+      deleteBtn.setAttribute('data-menu-close', '');
+      deleteBtn.title = 'Delete saved section';
       deleteBtn.setAttribute('aria-label', `Delete ${item.name}`);
+      deleteBtn.appendChild(app.icon('close'));
       deleteBtn.addEventListener('click', () => app.requestDeleteCollectedSection(item.id));
 
-      actions.appendChild(insertBtn);
-      actions.appendChild(deleteBtn);
-      header.appendChild(actions);
+      row.appendChild(insertBtn);
+      row.appendChild(deleteBtn);
+      panel.appendChild(row);
+    });
 
-      card.appendChild(header);
-      card.appendChild(createSectionPreview(item.section));
-      list.appendChild(card);
+    const separator = document.createElement('div');
+    separator.className = 'menu-separator';
+    separator.setAttribute('role', 'separator');
+    panel.appendChild(separator);
+
+    const fromText = document.createElement('button');
+    fromText.type = 'button';
+    fromText.className = 'menu-item';
+    fromText.textContent = 'From pasted text…';
+    fromText.addEventListener('click', () => app.openImportModal && app.openImportModal());
+    panel.appendChild(fromText);
+
+    if (menuPlacement === 'auto') {
+      const topLabel = document.createElement('label');
+      topLabel.className = 'menu-check';
+      const top = document.createElement('input');
+      top.type = 'checkbox';
+      top.className = 'add-section-top-toggle';
+      top.addEventListener('change', () => {
+        const note = panel.querySelector('.add-section-note');
+        if (note) note.textContent = app.describeSectionInsert(top.checked ? 'top' : 'auto');
+      });
+      topLabel.appendChild(top);
+      topLabel.appendChild(document.createTextNode(' Add at the top instead'));
+      panel.appendChild(topLabel);
+    }
+  }
+
+  app.renderAddSectionMenus = function() {
+    document.querySelectorAll('[data-add-section-panel]').forEach(panel => {
+      const menu = panel.closest('details');
+      buildAddSectionPanel(panel, menu?.dataset.insert === 'end' ? 'end' : 'auto');
     });
   };
 
+  // Saved ("collected") sections live in the Add section menus.
+  app.renderCollectedSections = function() {
+    app.renderAddSectionMenus();
+  };
+
   app.refreshWorkflowPanels = function() {
-    if (app.activeEditorTab === 'versions') app.renderVersions();
-    if (app.activeEditorTab === 'info') app.renderInfoPanel();
-    if (app.activeEditorTab === 'collected') app.renderCollectedSections();
+    if (app.isVersionsModalOpen()) app.renderVersions();
+    app.renderInfoPanel();
     if (app.activeWorkspace === 'library') app.renderFullLibrary();
+  };
+
+  app.isVersionsModalOpen = function() {
+    const modal = $('versions-modal');
+    return !!modal && !modal.hidden;
   };
 
   app.showWorkspace = function(mode) {
@@ -554,30 +631,16 @@
       libraryBtn.classList.toggle('active', app.activeWorkspace === 'library');
       libraryBtn.setAttribute('aria-pressed', String(app.activeWorkspace === 'library'));
     }
+    // Chart commands (Undo, Save, Export) only show while the chart is.
+    const toolbar = $('toolbar');
+    if (toolbar) toolbar.dataset.workspace = app.activeWorkspace;
+    document.querySelectorAll('.editor-only').forEach(element => {
+      element.hidden = app.activeWorkspace !== 'editor';
+    });
+    document.querySelectorAll('.library-only').forEach(element => {
+      element.hidden = app.activeWorkspace !== 'library';
+    });
     if (app.activeWorkspace === 'library') app.renderFullLibrary();
-  };
-
-  app.showEditorTab = function(tab) {
-    const nextTab = tab || 'sections';
-    if (nextTab !== 'sections' && app.isSearchReplaceOpen?.()) {
-      app.closeSearchReplace({ restore: false });
-    }
-    app.activeEditorTab = nextTab;
-    document.querySelectorAll('[data-editor-tab]').forEach(btn => {
-      const active = btn.dataset.editorTab === app.activeEditorTab;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-selected', String(active));
-      btn.tabIndex = active ? 0 : -1;
-    });
-    document.querySelectorAll('[data-editor-tab-panel]').forEach(panel => {
-      const active = panel.dataset.editorTabPanel === app.activeEditorTab;
-      panel.hidden = !active;
-      panel.classList.toggle('active', active);
-    });
-    document.querySelectorAll('[data-editor-tab-actions]').forEach(actions => {
-      actions.classList.toggle('hidden', actions.dataset.editorTabActions !== app.activeEditorTab);
-    });
-    app.refreshWorkflowPanels();
   };
 
   app.openGroupModal = function(groupId = null) {
@@ -616,6 +679,18 @@
     if (modal) app.closeModal(modal);
   };
 
+  app.openVersionsModal = function() {
+    const modal = $('versions-modal');
+    if (!modal) return;
+    app.openModal(modal, { initialFocus: $('btn-versions-close') });
+    app.renderVersions();
+  };
+
+  app.closeVersionsModal = function() {
+    const modal = $('versions-modal');
+    if (modal && !modal.hidden) app.closeModal(modal);
+  };
+
   app.openCollectSectionModal = function(sectionId) {
     pendingCollectSectionId = sectionId;
     const section = app.state.sections.find(item => item.id === sectionId);
@@ -637,23 +712,7 @@
     $('btn-editor-view')?.addEventListener('click', () => app.showWorkspace('editor'));
     $('btn-library-view')?.addEventListener('click', () => app.showWorkspace('library'));
 
-    const editorTabs = Array.from(document.querySelectorAll('[data-editor-tab]'));
-    editorTabs.forEach(btn => {
-      btn.addEventListener('click', () => app.showEditorTab(btn.dataset.editorTab));
-      btn.addEventListener('keydown', event => {
-        let nextIndex = null;
-        const currentIndex = editorTabs.indexOf(btn);
-        if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % editorTabs.length;
-        if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + editorTabs.length) % editorTabs.length;
-        if (event.key === 'Home') nextIndex = 0;
-        if (event.key === 'End') nextIndex = editorTabs.length - 1;
-        if (nextIndex === null) return;
-        event.preventDefault();
-        const nextTab = editorTabs[nextIndex];
-        app.showEditorTab(nextTab.dataset.editorTab);
-        nextTab.focus();
-      });
-    });
+    $('btn-library-new')?.addEventListener('click', () => $('btn-new')?.click());
 
     $('btn-new-group')?.addEventListener('click', () => app.openGroupModal());
     $('full-library-search')?.addEventListener('input', app.debounce(() => app.renderFullLibrary(), app.SEARCH_DEBOUNCE_MS));
@@ -676,6 +735,9 @@
     });
 
     $('btn-save-version')?.addEventListener('click', () => app.openVersionModal());
+    $('btn-save-version-inline')?.addEventListener('click', () => app.openVersionModal());
+    $('btn-version-history')?.addEventListener('click', () => app.openVersionsModal());
+    $('btn-versions-close')?.addEventListener('click', () => app.closeVersionsModal());
     $('btn-version-cancel')?.addEventListener('click', () => app.closeVersionModal());
     onSubmit('version-form', () => {
       app.saveChartVersion($('version-name-input')?.value || '', $('version-notes-input')?.value || '');
@@ -692,6 +754,7 @@
 
     $('input-group')?.addEventListener('change', e => {
       app.state.groupId = e.target.value || '';
+      if (app.updateChartDetailsHint) app.updateChartDetailsHint();
       if (app.state.id) app.updateChartGroup(app.state.id, app.state.groupId);
       if (app.autoSave) app.autoSave();
     });
@@ -707,6 +770,7 @@
       el.addEventListener('blur', () => app.commitTextEdit());
       el.addEventListener('input', () => {
         app.state[prop] = el.value;
+        if (app.updateChartDetailsHint) app.updateChartDetailsHint();
         if (app.autoSave) app.autoSave();
       });
     });

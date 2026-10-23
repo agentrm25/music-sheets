@@ -11,7 +11,7 @@ Chart Creator is a local-first desktop application for building color-coded musi
 - Builds charts from sections containing chords, lyrics, instructions, combined chord-and-lyric rows, and blank spacing rows.
 - Transposes supported chord symbols while leaving lyrics and instructions unchanged.
 - Provides section templates, pointer and keyboard reordering, per-section text scaling, search and replace, and undo/redo.
-- Maintains a local chart library with groups, favorites, versions, private workflow fields, and reusable collected sections.
+- Maintains a local chart library with groups, favorites, versions, private workflow fields, and reusable saved sections (My sections).
 - Imports chart text or Chart Creator JSON and exports the current chart as JSON or a US Letter PDF.
 - Optionally mirrors library saves to a user-selected folder when running as the desktop application.
 
@@ -38,21 +38,21 @@ The current release provides 64-bit Windows installers:
 
 ## Start using the application
 
-1. Enter the song title, artist, musical key, tempo, meter, capo, and optional arrangement notes in the left panel.
-2. Choose a section template and add it at the top or bottom of the chart.
-3. Select each section and line type, then enter chords, lyrics, instructions, or combined chord-and-lyric content.
-4. Check the live preview and adjust the section's **Text** percentage when a section needs larger output.
+1. Type the song title and artist at the top of the editor, then set the key, BPM, time signature, and capo underneath.
+2. Select **Add chords & lyrics** or **Add section** and pick a template, or paste an existing chart with **Import existing text**.
+3. Enter chords, lyrics, instructions, or combined chord-and-lyric rows. Press **Enter** to add another line of the same kind.
+4. Check the live preview. A section's **⋯** menu sets its text size and repeat count.
 5. Select **Save to Library** to keep the chart in this browser or desktop application's local storage.
-6. Select **Export JSON** for a portable backup and **Export PDF** for a printable chart.
+6. Select **Export PDF** for a printable chart. The arrow beside **Save to Library** has **Export JSON backup**.
 
-The complete workflow, including imports, groups, versions, collected sections, keyboard controls, and recovery steps, is in the [User Guide](docs/USER_GUIDE.md).
+The complete workflow, including imports, groups, versions, saved sections, keyboard controls, and recovery steps, is in the [User Guide](docs/USER_GUIDE.md).
 
 ## Data safety at a glance
 
 - Chart data is stored in the current browser or desktop webview's `localStorage`; it is not synchronized to an account or server.
 - Browser mode and the installed desktop application use different storage origins and therefore do not share a library automatically.
-- Clearing site/application data can permanently remove the draft, library, groups, versions, collected sections, and settings.
-- **Export JSON** is the portable backup mechanism. Private Info fields are included in JSON exports but excluded from PDFs.
+- Clearing site/application data can permanently remove the draft, library, groups, versions, saved sections, and settings.
+- **Export JSON backup** is the portable backup mechanism. Private info fields are included in JSON exports but excluded from PDFs.
 - Deleting a library chart does not delete a JSON file previously written to a desktop mirror folder.
 
 Read [Data, Backups, and Privacy](docs/DATA_AND_PRIVACY.md) before relying on the application for an important library.

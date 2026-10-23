@@ -35,16 +35,6 @@
     return btn;
   }
 
-  function createSmallBtn(label, onClick, focusKey) {
-    const btn = document.createElement('button');
-    if (focusKey) btn.dataset.focusKey = focusKey;
-    btn.type = 'button';
-    btn.className = 'btn btn-sm btn-ghost';
-    btn.textContent = label;
-    btn.addEventListener('click', onClick);
-    return btn;
-  }
-
   function createLineActionBtn(iconName, title, onClick, focusKey) {
     const btn = document.createElement('button');
     if (focusKey) btn.dataset.focusKey = focusKey;
@@ -254,11 +244,11 @@
     }
     // The line was deleted: focus the same control on its neighbour, or the add bar.
     const neighbour = lineItems[Math.min(snapshot.lineIndex, lineItems.length - 1)];
-    (neighbour ? findFocusableKey(neighbour, snapshot.key) : findFocusKey(card, 'add-lyric'))?.focus();
+    (neighbour ? findFocusableKey(neighbour, snapshot.key) : findFocusKey(card, 'add-line'))?.focus();
   }
 
   app.renderEditor = function() {
-    const editorSections = document.getElementById('editor-sections');
+    const editorSections = document.getElementById('section-list') || document.getElementById('editor-sections');
     const emptyState = document.getElementById('empty-state');
     const addSectionArea = document.getElementById('add-section-area');
     if (!editorSections) return;
@@ -274,8 +264,11 @@
     });
 
     const isEmpty = app.state.sections.length === 0;
-    emptyState.hidden = !isEmpty;
-    addSectionArea.hidden = isEmpty;
+    if (emptyState) emptyState.hidden = !isEmpty;
+    if (addSectionArea) addSectionArea.hidden = isEmpty;
+    if (app.activeSectionId && !app.state.sections.some(section => section.id === app.activeSectionId)) {
+      app.activeSectionId = null;
+    }
 
     const cards = app.state.sections.map((section, sIdx) => {
       const card = app.buildSectionCard(section, sIdx);
@@ -289,6 +282,26 @@
     app.updateStatusBar();
   };
 
+  app.LINE_TYPE_LABELS = {
+    chord: 'Chord',
+    lyric: 'Lyric',
+    grid: 'Chord + Lyric',
+    instruction: 'Instruction',
+    blank: 'Blank'
+  };
+  const LINE_TYPE_ORDER = ['grid', 'chord', 'lyric', 'instruction', 'blank'];
+
+  // First words of a section, shown in its header while it is collapsed.
+  function sectionSummaryText(section) {
+    for (const line of section.lines) {
+      const text = line.type === 'grid'
+        ? [line.chords, line.content].map(value => (value || '').trim()).filter(Boolean).join(' · ')
+        : (line.content || '').trim();
+      if (text) return text.replace(/\*\*/g, '');
+    }
+    return section.lines.length ? 'Empty lines' : 'No lines yet';
+  }
+
   function buildSectionHeader(section, sIdx) {
     const header = document.createElement('div');
     header.className = 'section-card-header';
@@ -299,7 +312,7 @@
     collapseToggle.className = 'section-collapse-toggle';
     collapseToggle.dataset.focusKey = 'collapse';
     collapseToggle.appendChild(app.icon('chevron-down'));
-    collapseToggle.title = 'Collapse/expand section';
+    collapseToggle.title = section.collapsed ? 'Expand section' : 'Collapse section';
     collapseToggle.setAttribute('aria-label', `${section.collapsed ? 'Expand' : 'Collapse'} ${displayTitle} section`);
     collapseToggle.setAttribute('aria-expanded', String(!section.collapsed));
     collapseToggle.addEventListener('click', e => {
@@ -361,33 +374,6 @@
       });
     }
 
-    const fontScaleControl = document.createElement('label');
-    fontScaleControl.className = 'section-font-scale-control';
-    fontScaleControl.title = 'Section font size in preview and PDF';
-
-    const fontScaleText = document.createElement('span');
-    fontScaleText.textContent = 'Text';
-
-    const fontScaleSelect = document.createElement('select');
-    fontScaleSelect.className = 'section-font-scale-select';
-    fontScaleSelect.dataset.focusKey = 'font-scale';
-    fontScaleSelect.setAttribute('aria-label', 'Section font size');
-    for (let percent = 100; percent <= 200; percent += 10) {
-      const option = document.createElement('option');
-      option.value = String(percent);
-      option.textContent = `${percent}%`;
-      if (percent === app.normalizeSectionFontScale(section.fontScale)) option.selected = true;
-      fontScaleSelect.appendChild(option);
-    }
-    fontScaleSelect.addEventListener('change', () => {
-      app.pushUndo();
-      section.fontScale = app.normalizeSectionFontScale(fontScaleSelect.value);
-      fontScaleSelect.value = String(section.fontScale);
-      app.commitChange();
-    });
-    fontScaleControl.appendChild(fontScaleText);
-    fontScaleControl.appendChild(fontScaleSelect);
-
     let customInput = null;
     if (section.type === 'custom') {
       customInput = document.createElement('input');
@@ -405,45 +391,94 @@
       });
     }
 
+    // Print settings that differ from the default stay visible as badges, so
+    // a section's output can be read without opening its menu.
+    const badges = document.createElement('span');
+    badges.className = 'section-badges';
+    const fontScaleValue = app.normalizeSectionFontScale(section.fontScale);
+    if (section.repeat) {
+      const badge = document.createElement('span');
+      badge.className = 'section-badge';
+      badge.textContent = `×${section.repeat}`;
+      badge.title = `Repeats ${section.repeat} times`;
+      badges.appendChild(badge);
+    }
+    if (fontScaleValue !== 100) {
+      const badge = document.createElement('span');
+      badge.className = 'section-badge';
+      badge.textContent = `Text ${fontScaleValue}%`;
+      badge.title = 'Text size in preview and PDF';
+      badges.appendChild(badge);
+    }
+
+    let summaryText = null;
+    if (section.collapsed) {
+      summaryText = document.createElement('span');
+      summaryText.className = 'section-collapsed-summary';
+      summaryText.textContent = sectionSummaryText(section);
+    }
+
+    const fontScaleControl = document.createElement('label');
+    fontScaleControl.className = 'section-font-scale-control';
+    fontScaleControl.title = 'Section font size in preview and PDF';
+
+    const fontScaleText = document.createElement('span');
+    fontScaleText.textContent = 'Text size';
+
+    const fontScaleSelect = document.createElement('select');
+    fontScaleSelect.className = 'section-font-scale-select';
+    fontScaleSelect.dataset.focusKey = 'font-scale';
+    fontScaleSelect.setAttribute('aria-label', 'Section font size');
+    for (let percent = 100; percent <= 200; percent += 10) {
+      const option = document.createElement('option');
+      option.value = String(percent);
+      option.textContent = `${percent}%`;
+      if (percent === fontScaleValue) option.selected = true;
+      fontScaleSelect.appendChild(option);
+    }
+    fontScaleSelect.addEventListener('change', () => {
+      app.pushUndo();
+      section.fontScale = app.normalizeSectionFontScale(fontScaleSelect.value);
+      fontScaleSelect.value = String(section.fontScale);
+      app.commitChange();
+    });
+    fontScaleControl.appendChild(fontScaleText);
+    fontScaleControl.appendChild(fontScaleSelect);
+
+    const repeatControl = document.createElement('label');
+    repeatControl.className = 'section-repeat-control';
+    repeatControl.title = 'Print a repeat count with this section';
+
+    const repeatText = document.createElement('span');
+    repeatText.className = 'section-repeat-label';
+    repeatText.textContent = 'Repeat';
+
+    const repeatMark = document.createElement('span');
+    repeatMark.className = 'section-repeat-mark';
+    repeatMark.textContent = '×';
+
+    const repeatInput = document.createElement('input');
+    repeatInput.className = 'section-repeat-input';
+    repeatInput.dataset.focusKey = 'repeat';
+    repeatInput.type = 'number';
+    repeatInput.min = '1';
+    repeatInput.max = '99';
+    repeatInput.value = section.repeat || '';
+    repeatInput.placeholder = '-';
+    repeatInput.setAttribute('aria-label', 'Repeat count');
+    repeatInput.addEventListener('change', () => {
+      app.pushUndo();
+      section.repeat = app.normalizeRepeat(repeatInput.value);
+      repeatInput.value = section.repeat === null ? '' : String(section.repeat);
+      app.commitChange();
+    });
+
+    repeatControl.appendChild(repeatText);
+    repeatControl.appendChild(repeatMark);
+    repeatControl.appendChild(repeatInput);
+
     const actions = document.createElement('div');
     actions.className = 'section-card-actions';
-
-    let repeatControl = null;
-    if (section.type !== 'verse') {
-      repeatControl = document.createElement('label');
-      repeatControl.className = 'section-repeat-control';
-      repeatControl.title = 'Repeat this section';
-
-      const repeatText = document.createElement('span');
-      repeatText.className = 'section-repeat-label';
-      repeatText.textContent = 'Repeat';
-
-      const repeatMark = document.createElement('span');
-      repeatMark.className = 'section-repeat-mark';
-      repeatMark.textContent = '×';
-
-      const repeatInput = document.createElement('input');
-      repeatInput.className = 'section-repeat-input';
-      repeatInput.dataset.focusKey = 'repeat';
-      repeatInput.type = 'number';
-      repeatInput.min = '1';
-      repeatInput.max = '99';
-      repeatInput.value = section.repeat || '';
-      repeatInput.placeholder = '-';
-      repeatInput.setAttribute('aria-label', 'Repeat count');
-      repeatInput.addEventListener('change', () => {
-        app.pushUndo();
-        section.repeat = app.normalizeRepeat(repeatInput.value);
-        repeatInput.value = section.repeat === null ? '' : String(section.repeat);
-        app.commitChange();
-      });
-
-      repeatControl.appendChild(repeatText);
-      repeatControl.appendChild(repeatMark);
-      repeatControl.appendChild(repeatInput);
-    } else {
-      actions.classList.add('section-card-actions-push');
-    }
 
     const dupeBtn = createActionBtn('Duplicate', `Duplicate ${displayTitle} section`, () => {
       app.pushUndo();
@@ -453,19 +488,10 @@
       if (copy.type === 'verse') copy.verseNumber = app.getNextVerseNumber(app.state.sections);
       app.state.sections.splice(sIdx + 1, 0, copy);
       app.commitChange();
-      setTimeout(() => {
-        const newCard = document.querySelector(`[data-section-id="${copy.id}"]`);
-        if (newCard) {
-          newCard.classList.add('section-flash');
-          newCard.scrollIntoView({ behavior: app.scrollBehavior(), block: 'center' });
-          const firstInput = newCard.querySelector('.line-input');
-          if (firstInput) firstInput.focus();
-          setTimeout(() => newCard.classList.remove('section-flash'), 1500);
-        }
-      }, 100);
+      app.revealSection(copy.id);
     }, 'duplicate');
 
-    const collectBtn = createActionBtn('Collect', `Collect ${displayTitle} section for reuse`, () => {
+    const collectBtn = createActionBtn('Save to My sections', `Save ${displayTitle} section to My sections for reuse`, () => {
       if (app.openCollectSectionModal) {
         app.openCollectSectionModal(section.id);
       }
@@ -474,27 +500,34 @@
     const deleteBtn = createActionBtn('Delete', `Delete ${displayTitle} section`, () => {
       app.pushUndo();
       app.state.sections.splice(sIdx, 1);
+      if (app.activeSectionId === section.id) app.activeSectionId = null;
       app.commitChange();
-      app.showToast('Section deleted', 'info');
+      app.showToast(`${displayTitle.charAt(0)}${displayTitle.slice(1).toLowerCase()} deleted`, 'info', { undo: true });
     }, 'delete-section');
     deleteBtn.classList.add('delete');
 
-    actions.appendChild(collectBtn);
-    actions.appendChild(dupeBtn);
-    actions.appendChild(deleteBtn);
+    [dupeBtn, collectBtn, deleteBtn].forEach(button => {
+      button.classList.add('menu-item');
+      actions.appendChild(button);
+    });
 
-    // Keep secondary controls available without crowding the section title.
+    // A floating menu, so opening it never reflows the card.
     const options = document.createElement('details');
-    options.className = 'section-options';
+    options.className = 'section-options menu';
+    options.setAttribute('data-menu', '');
     const summary = document.createElement('summary');
-    summary.className = 'btn btn-sm btn-ghost';
+    summary.className = 'btn btn-sm btn-ghost btn-icon';
     summary.dataset.focusKey = 'options';
-    summary.textContent = 'Options';
+    summary.title = 'Section options';
+    summary.appendChild(app.icon('more'));
     summary.setAttribute('aria-label', `Options for ${displayTitle} section`);
     const optionsContent = document.createElement('div');
-    optionsContent.className = 'section-options-content';
-    optionsContent.appendChild(fontScaleControl);
-    if (repeatControl) optionsContent.appendChild(repeatControl);
+    optionsContent.className = 'section-options-content menu-panel menu-panel-end';
+    const settingsRow = document.createElement('div');
+    settingsRow.className = 'section-options-settings';
+    settingsRow.appendChild(fontScaleControl);
+    settingsRow.appendChild(repeatControl);
+    optionsContent.appendChild(settingsRow);
     optionsContent.appendChild(actions);
     options.appendChild(summary);
     options.appendChild(optionsContent);
@@ -509,6 +542,8 @@
     header.appendChild(typeSelect);
     if (verseNumInput) header.appendChild(verseNumInput);
     if (customInput) header.appendChild(customInput);
+    if (badges.children.length) header.appendChild(badges);
+    if (summaryText) header.appendChild(summaryText);
     header.appendChild(options);
 
     return header;
@@ -526,27 +561,48 @@
       lineList.appendChild(lineEl);
     });
 
+    // One "add line" control: the main button repeats the section's last
+    // line type, and the menu offers every type.
+    const displayTitle = app.getSectionDisplayTitle(section);
+    const lastType = section.lines.length ? section.lines[section.lines.length - 1].type : 'grid';
+    const defaultType = app.LINE_TYPE_LABELS[lastType] ? lastType : 'grid';
     const addBar = document.createElement('div');
     addBar.className = 'add-line-bar';
 
-    const addChordBtn = createSmallBtn('+ Chord', () => app.addLineToSection(section, 'chord'), 'add-chord');
-    addChordBtn.classList.add('add-line-btn--chord');
-    
-    const addLyricBtn = createSmallBtn('+ Lyric', () => app.addLineToSection(section, 'lyric'), 'add-lyric');
-    
-    const addInstructionBtn = createSmallBtn('+ Instruction', () => app.addLineToSection(section, 'instruction'), 'add-instruction');
-    addInstructionBtn.classList.add('add-line-btn--instruction');
+    const addLine = document.createElement('button');
+    addLine.type = 'button';
+    addLine.className = `btn btn-sm btn-ghost add-line-main add-line-btn--${defaultType}`;
+    addLine.dataset.focusKey = 'add-line';
+    addLine.appendChild(app.icon('plus'));
+    addLine.appendChild(document.createTextNode(` ${app.LINE_TYPE_LABELS[defaultType]} line`));
+    addLine.setAttribute('aria-label', `Add ${app.LINE_TYPE_LABELS[defaultType]} line to ${displayTitle} section`);
+    addLine.addEventListener('click', () => app.addLineToSection(section, defaultType, defaultType !== 'blank'));
 
-    const addBlankBtn = createSmallBtn('+ Blank', () => app.addLineToSection(section, 'blank', false), 'add-blank');
-    
-    const addGridBtn = createSmallBtn('+ Chord + Lyric', () => app.addLineToSection(section, 'grid'), 'add-grid');
-    addGridBtn.classList.add('add-line-btn--grid');
+    const typeMenu = document.createElement('details');
+    typeMenu.className = 'menu add-line-menu';
+    typeMenu.setAttribute('data-menu', '');
+    const typeSummary = document.createElement('summary');
+    typeSummary.className = 'btn btn-sm btn-ghost btn-icon';
+    typeSummary.dataset.focusKey = 'add-line-menu';
+    typeSummary.title = 'Add a different kind of line';
+    typeSummary.setAttribute('aria-label', `Choose a line type to add to ${displayTitle} section`);
+    typeSummary.appendChild(app.icon('chevron-down'));
+    const typePanel = document.createElement('div');
+    typePanel.className = 'menu-panel';
+    LINE_TYPE_ORDER.forEach(type => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `menu-item add-line-btn--${type}`;
+      item.dataset.focusKey = `add-${type}`;
+      item.textContent = `${app.LINE_TYPE_LABELS[type]} line`;
+      item.addEventListener('click', () => app.addLineToSection(section, type, type !== 'blank'));
+      typePanel.appendChild(item);
+    });
+    typeMenu.appendChild(typeSummary);
+    typeMenu.appendChild(typePanel);
 
-    addBar.appendChild(addChordBtn);
-    addBar.appendChild(addLyricBtn);
-    addBar.appendChild(addGridBtn);
-    addBar.appendChild(addInstructionBtn);
-    addBar.appendChild(addBlankBtn);
+    addBar.appendChild(addLine);
+    addBar.appendChild(typeMenu);
 
     const lineDropZone = document.createElement('div');
     lineDropZone.className = 'line-drop-zone';
@@ -554,10 +610,79 @@
 
     body.appendChild(lineList);
     body.appendChild(lineDropZone);
-    body.appendChild(addBar);
+    // The add-line control sits below the (resizable, scrolling) body so its
+    // menu is never clipped; buildSectionCard places it.
+    body.addLineBar = addBar;
 
     return body;
   }
+
+  // Where Add section puts a new section. 'auto' follows the section being
+  // worked on (the last one that had focus) and falls back to the end.
+  app.getSectionInsertIndex = function(placement = 'auto') {
+    if (placement === 'top') return 0;
+    if (placement === 'auto' && app.activeSectionId) {
+      const index = app.state.sections.findIndex(section => section.id === app.activeSectionId);
+      if (index >= 0) return index + 1;
+    }
+    return app.state.sections.length;
+  };
+
+  app.describeSectionInsert = function(placement = 'auto') {
+    if (placement === 'top') return 'Adds at the top of the chart';
+    const index = app.getSectionInsertIndex(placement);
+    if (!app.state.sections.length || index >= app.state.sections.length) return 'Adds at the end of the chart';
+    const previous = app.state.sections[index - 1];
+    return `Adds after ${app.getSectionDisplayTitle(previous)}`;
+  };
+
+  // Callers push Undo first; this inserts, renders, and reveals the section.
+  app.insertSection = function(section, placement = 'auto') {
+    const index = app.getSectionInsertIndex(placement);
+    app.state.sections.splice(index, 0, section);
+    if (section.type === 'verse' && app.renumberVerses) app.renumberVerses(app.state.sections);
+    app.activeSectionId = section.id;
+    app.commitChange();
+    app.revealSection(section.id);
+    return section;
+  };
+
+  app.getSectionTemplateLabel = function(index) {
+    const template = app.SECTION_TEMPLATES[index];
+    if (!template) return '';
+    return index === 0 ? 'Blank verse' : template.name.replace(' - ', ' – ');
+  };
+
+  app.createSectionFromTemplate = function(index) {
+    const template = app.SECTION_TEMPLATES[index] || app.SECTION_TEMPLATES[0];
+    const name = template.name.toLowerCase();
+    const section = app.createSection(index === 0 || name.includes('verse') ? 'verse' : 'custom', app.state.sections);
+    if (section.type === 'custom') {
+      const knownType = Object.keys(app.SECTION_META).find(type => name.includes(type));
+      if (knownType) section.type = knownType;
+      else section.customLabel = template.name.split(' ')[0];
+    }
+    section.lines = template.lines();
+    return section;
+  };
+
+  app.addSectionFromTemplate = function(index, placement = 'auto') {
+    app.pushUndo();
+    return app.insertSection(app.createSectionFromTemplate(index), placement);
+  };
+
+  // Scroll a section into view, flash it, and put the cursor in its first line.
+  app.revealSection = function(sectionId, { focus = true } = {}) {
+    setTimeout(() => {
+      const card = Array.from(document.querySelectorAll('.section-card'))
+        .find(item => item.dataset.sectionId === sectionId);
+      if (!card) return;
+      card.classList.add('section-flash');
+      card.scrollIntoView({ behavior: app.scrollBehavior(), block: 'center' });
+      if (focus) card.querySelector('.line-input')?.focus();
+      setTimeout(() => card.classList.remove('section-flash'), 1500);
+    }, 50);
+  };
 
   app.buildSectionCard = function(section, sIdx) {
     const card = document.createElement('div');
@@ -566,6 +691,8 @@
     card.setAttribute('role', 'group');
     card.setAttribute('aria-labelledby', `section-title-${section.id}`);
     if (section.collapsed) card.classList.add('collapsed');
+    // The section being worked on is where Add section inserts next.
+    card.addEventListener('focusin', () => { app.activeSectionId = section.id; });
 
     const header = buildSectionHeader(section, sIdx);
     const body = buildSectionBody(section, sIdx);
@@ -577,6 +704,10 @@
 
     card.appendChild(header);
     card.appendChild(body);
+    const footer = document.createElement('div');
+    footer.className = 'section-card-footer';
+    footer.appendChild(body.addLineBar);
+    card.appendChild(footer);
 
     const resizeObserver = new ResizeObserver(() => {
       const heightStyle = body.style.height;
@@ -795,6 +926,7 @@
     const typeSelect = document.createElement('select');
     typeSelect.className = 'line-type-select';
     typeSelect.dataset.focusKey = 'line-type';
+    typeSelect.dataset.lineType = line.type;
     typeSelect.setAttribute('aria-label', 'Line type');
     [
       { value: 'chord', label: 'Chord' },

@@ -89,7 +89,8 @@ test('draft save is explicit about local persistence and never claims a Library 
   env.app.state.title = 'First chart';
   env.app.autoSave();
   assert.equal(env.draftStatus(), 'Saving draft…');
-  assert.equal(env.libraryStatus(), 'Not saved to Library');
+  assert.equal(env.elements.get('status-autosave').hidden, true, 'routine draft saves stay out of the way');
+  assert.equal(env.libraryStatus(), 'Not in Library yet');
   assert.equal(env.data.has(DRAFT_KEY), false);
   env.flushTimers();
   assert.equal(env.draftStatus(), 'Draft saved on this device');
@@ -100,9 +101,9 @@ test('draft save is explicit about local persistence and never claims a Library 
   assert.equal(env.libraryStatus(), 'Saved to Library');
   env.app.state.artist = 'Changed artist';
   env.app.autoSave();
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   env.flushTimers();
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   assert.equal(env.app.getSavedCharts()[0].data.artist, '');
 });
 
@@ -115,13 +116,13 @@ test('metadata edits and Undo/Redo reflect whether the current chart matches Lib
   undo.push(env.app.state);
   input.value = 'Use alternate intro';
   input.dispatch('input');
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   env.app.state = undo.undo(env.app.state);
   env.app.autoSave();
   assert.equal(env.libraryStatus(), 'Saved to Library');
   env.app.state = undo.redo();
   env.app.autoSave();
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
 });
 
 test('failed draft and Library writes preserve the last saved copies and truthful states', async () => {
@@ -137,13 +138,14 @@ test('failed draft and Library writes preserve the last saved copies and truthfu
   await env.app.saveChartToLibrary();
   assert.equal(env.draftStatus(), 'Draft save failed');
   assert.equal(env.elements.get('status-autosave').dataset.saveState, 'failed');
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.elements.get('status-autosave').hidden, false, 'a failed draft save is shown');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   assert.equal(env.data.get(DRAFT_KEY), originalDraft);
   assert.equal(env.data.get(LIBRARY_KEY), originalLibrary);
 
   env.app.state = env.app.createEmptyChart();
   await env.app.saveChartToLibrary();
-  assert.equal(env.libraryStatus(), 'Not saved to Library');
+  assert.equal(env.libraryStatus(), 'Not in Library yet');
   env.failures.clear();
   env.app.autoSave(true);
   await env.app.saveChartToLibrary();
@@ -159,9 +161,9 @@ test('favorite and group changes do not mark pending chart edits as saved', asyn
   const charts = env.app.getSavedCharts();
   charts[0].isFavorite = true;
   env.app.saveCharts(charts);
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   env.app.updateChartGroup(env.app.state.id, 'practice');
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   assert.equal(env.app.getSavedCharts()[0].data.title, '');
   assert.equal(env.app.getSavedCharts()[0].groupId, 'practice');
   env.app.state.title = '';
@@ -178,14 +180,14 @@ test('versions, restoring old content, loading, and deleting update Library stat
   env.app.state.title = 'New arrangement';
   await env.app.saveChartToLibrary();
   env.app.restoreChartVersion(versionId);
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   assert.equal(env.app.state.title, 'Original arrangement');
   env.app.loadChartFromLibrary(env.app.state.id);
   assert.equal(env.libraryStatus(), 'Saved to Library');
   assert.equal(env.app.state.title, 'New arrangement');
   assert.equal(JSON.parse(env.data.get(DRAFT_KEY)).title, 'New arrangement');
   env.app.deleteChartFromLibrary(env.app.state.id);
-  assert.equal(env.libraryStatus(), 'Not saved to Library');
+  assert.equal(env.libraryStatus(), 'Not in Library yet');
 });
 
 test('edits made during folder mirroring stay pending after mirroring completes', async () => {
@@ -198,7 +200,7 @@ test('edits made during folder mirroring stay pending after mirroring completes'
   env.app.autoSave();
   completeMirror('/charts/chart.json');
   await saving;
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
 });
 
 test('empty Library provides working save/create actions and separates filtered results', async () => {
@@ -214,8 +216,8 @@ test('empty Library provides working save/create actions and separates filtered 
   env.app.renderFullLibrary();
   let nodes = descendants(grid);
   assert.ok(nodes.some(node => node.textContent === 'Your Library is empty'));
-  nodes.find(node => node.textContent === 'Save current draft').click();
-  nodes.find(node => node.textContent === 'Create chart').click();
+  nodes.find(node => node.textContent === 'Save current chart').click();
+  nodes.find(node => node.textContent === 'New chart').click();
   assert.equal(saves, 1);
   assert.equal(creates, 1);
   assert.equal(env.app.activeWorkspace, 'editor');
@@ -226,7 +228,7 @@ test('empty Library provides working save/create actions and separates filtered 
   env.app.renderFullLibrary();
   nodes = descendants(grid);
   assert.ok(nodes.some(node => node.textContent === 'No matching charts'));
-  assert.equal(nodes.some(node => node.textContent === 'Save current draft'), false);
+  assert.equal(nodes.some(node => node.textContent === 'Save current chart'), false);
   nodes.find(node => node.textContent === 'Clear filters').click();
   assert.equal(search.value, '');
   assert.equal(env.app.librarySelectedGroupId, 'all');
@@ -235,7 +237,7 @@ test('empty Library provides working save/create actions and separates filtered 
 
 test('Find and Replace reveal the editor from compact panels and restore the prior panel', () => {
   for (const [panel, mode, fieldId] of [
-    ['details', 'find', 'search-find-input'],
+    ['preview', 'find', 'search-find-input'],
     ['preview', 'replace', 'search-replace-input']
   ]) {
     const env = createApp();
@@ -274,7 +276,7 @@ test('typing does not re-read and normalize the whole Library on every keystroke
     env.app.state.artist = (env.app.state.artist || '') + letter;
     env.app.autoSave();
   }
-  assert.equal(env.libraryStatus(), 'Library changes pending');
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
   assert.equal(libraryReads, 0);
 
   await env.app.saveChartToLibrary();
@@ -332,4 +334,19 @@ test('folder sync failures belong to the chart that failed and clear with the fo
   env.app.clearSaveDirectory();
   env.app.updateLibrarySaveStatus();
   assert.equal(env.libraryStatus(), 'Saved to Library');
+});
+
+test('collapsing or resizing a section does not make the Library copy out of date', async () => {
+  const env = createApp();
+  env.app.state.title = 'Viewed';
+  env.app.state.sections = [env.app.createSection('chorus')];
+  await env.app.saveChartToLibrary();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+  env.app.state.sections[0].collapsed = true;
+  env.app.state.sections[0].editorHeight = '300px';
+  env.app.autoSave();
+  assert.equal(env.libraryStatus(), 'Saved to Library');
+  env.app.state.sections[0].repeat = 2;
+  env.app.autoSave();
+  assert.equal(env.libraryStatus(), 'Unsaved changes');
 });

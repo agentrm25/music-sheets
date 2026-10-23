@@ -234,13 +234,7 @@
       sectionEl.style.setProperty('--section-line-height', `${17.6 * fontScale * 1.35}px`);
       sectionEl.style.setProperty('--section-instruction-size', `${15.5 * fontScale}px`);
 
-      const meta = app.SECTION_META[section.type] || app.SECTION_META.custom;
-      let headerText = meta.label;
-      if (section.type === 'custom') headerText = (section.customLabel || 'SECTION').toUpperCase();
-
-      if (section.repeat && section.type !== 'verse') {
-        headerText += ` × ${section.repeat}`;
-      }
+      const headerText = app.getSectionPrintHeader(section);
 
       if (headerText) {
         const label = document.createElement('div');

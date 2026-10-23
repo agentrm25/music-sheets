@@ -202,9 +202,9 @@ The PDF includes:
 It excludes:
 
 - chart ID;
-- group, status, source, and Info notes;
+- group, status, source, and private notes;
 - favorites;
-- versions and collected-section metadata;
+- versions and saved-section (My sections) metadata;
 - editor collapse state and editor height;
 - application theme and interface controls.
 
@@ -240,5 +240,5 @@ For any change that can affect PDF output:
 4. Include enough content to create multiple pages and place a combined row near a page boundary.
 5. Render or open every PDF page and inspect hierarchy, colors, weights, bracket alignment, blank spacing, page splits, clipping, and footer placement.
 6. Confirm the page is 612 × 792 pt.
-7. Confirm Info fields do not appear.
+7. Confirm private info fields do not appear.
 8. Compare the preview for intentional consistency, but verify final pagination against the PDF.

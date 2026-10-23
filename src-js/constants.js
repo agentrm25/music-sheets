@@ -13,6 +13,17 @@
     custom:       { label: 'SECTION',      color: '#9b5c00' }
   };
 
+  // The printed heading above a section in the preview and PDF. Verses print
+  // their number inline with the first lyric, so a verse only gets a heading
+  // when it repeats.
+  app.getSectionPrintHeader = function(section) {
+    const meta = app.SECTION_META[section.type] || app.SECTION_META.custom;
+    let headerText = meta.label;
+    if (section.type === 'custom') headerText = (section.customLabel || 'SECTION').toUpperCase();
+    if (section.repeat) headerText = headerText ? `${headerText} × ${section.repeat}` : `× ${section.repeat}`;
+    return headerText;
+  };
+
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
   // Decorative icon from the sprite in index.html. Always aria-hidden: the

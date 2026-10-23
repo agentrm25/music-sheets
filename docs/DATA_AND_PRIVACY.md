@@ -9,7 +9,7 @@ Chart Creator has no user accounts, hosted database, or synchronization service.
 - the current autosaved draft;
 - saved library charts and their versions;
 - groups;
-- collected sections;
+- saved sections (My sections);
 - theme and mirror-folder settings.
 
 Each environment has its own origin and storage profile. These stores are separate:
@@ -52,7 +52,7 @@ Loading a library chart replaces the current draft. Chart Creator warns when it 
 - title and artist;
 - BPM, time signature, current key, original key, and capo;
 - arrangement notes;
-- group ID, status, source, and Info notes;
+- group ID, status, source, and private notes;
 - sections, section settings, lines, and line content.
 
 It does not export the complete application library or these separate collections:
@@ -60,11 +60,11 @@ It does not export the complete application library or these separate collection
 - saved version history;
 - group names/catalog;
 - favorite flags;
-- collected-section catalog;
+- saved-section (My sections) catalog;
 - application theme;
 - mirror-folder setting.
 
-Because the JSON contains Info fields, treat it as private if those fields contain rehearsal notes, links, names, or other sensitive material.
+Because the JSON contains private info fields, treat it as private if those fields contain rehearsal notes, links, names, or other sensitive material.
 
 ## PDF contents
 
@@ -80,9 +80,9 @@ PDF export includes chart-facing content:
 It excludes workflow-only and editor-only fields:
 
 - chart ID;
-- group, status, source, and Info notes;
+- group, status, source, and private notes;
 - favorites;
-- saved versions and collected-section metadata;
+- saved versions and saved-section (My sections) metadata;
 - collapsed state and editor height;
 - application theme and interface controls.
 
@@ -97,7 +97,7 @@ The Tauri desktop application can write library saves to a selected folder as JS
 - Mirror filenames are derived from the chart's internal ID, encoded to a filesystem-safe value.
 - Renaming a chart updates the same mirror file.
 - Two charts with the same title still receive different files.
-- The mirror file contains current chart data, not the entire library, versions catalog, or collected-section catalog.
+- The mirror file contains current chart data, not the entire library, versions catalog, or saved-section (My sections) catalog.
 
 ### Deletion behavior
 
@@ -135,7 +135,7 @@ PDFs are print artifacts, not restorable chart backups. Use JSON for recovery.
 
 ### Browser or application data was cleared
 
-The local draft, library, groups, versions, collected sections, and settings may be gone. Chart Creator cannot reconstruct them from `localStorage`. Import JSON backups or mirror files one chart at a time.
+The local draft, library, groups, versions, saved sections, and settings may be gone. Chart Creator cannot reconstruct them from `localStorage`. Import JSON backups or mirror files one chart at a time.
 
 ### Storage quota was exceeded
 
